@@ -1,11 +1,13 @@
 package com.zht.app.dim;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import com.ververica.cdc.connectors.mysql.source.MySqlSource;
 import com.ververica.cdc.connectors.mysql.source.MySqlSourceBuilder;
 import com.ververica.cdc.connectors.mysql.table.StartupOptions;
 import com.ververica.cdc.debezium.JsonDebeziumDeserializationSchema;
+import com.zht.app.func.TableProcessFunction;
 import com.zht.bean.TableProcess;
 import com.zht.utils.KafkaUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -45,6 +47,7 @@ public class DimApp {
          String groupid = "dim_sink_app";
         DataStreamSource<String> gmallDS  = env.addSource(KafkaUtils.getKafkaConsumer(topic, groupid));
         OutputTag<String> dirtyTag = new OutputTag<String>("dirty");
+
         //过滤json格式的数据
         SingleOutputStreamOperator<JSONObject> jsonObj = gmallDS.process(new ProcessFunction<String, JSONObject>() {
             @Override
@@ -52,7 +55,7 @@ public class DimApp {
                 try {
                     JSONObject jsonObject = JSON.parseObject(value);
                     out.collect(jsonObject);
-                } catch (Exception e) {
+                } catch (JSONException e) {
                     ctx.output(dirtyTag, value);
                 }
             }
@@ -80,17 +83,8 @@ public class DimApp {
 
 
         // 根据广播数据疏离主流数据
-        connectedStream.process(new BroadcastProcessFunction<JSONObject, String, JSONObject>() {
-            @Override
-            public void processElement(JSONObject value, BroadcastProcessFunction<JSONObject, String, JSONObject>.ReadOnlyContext ctx, Collector<JSONObject> out) throws Exception {
+        connectedStream.process();
 
-            }
-
-            @Override
-            public void processBroadcastElement(String value, BroadcastProcessFunction<JSONObject, String, JSONObject>.Context ctx, Collector<JSONObject> out) throws Exception {
-
-            }
-        });
 
 
          //将数据写入phoenix
