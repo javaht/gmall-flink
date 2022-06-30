@@ -34,8 +34,8 @@ public class DimApp {
     public static void main(String[] args) throws Exception {
 
          //获取执行环境
-        StreamExecutionEnvironment  env = new StreamExecutionEnvironment();
-        env.setParallelism(4);
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
 /*      env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
         env.getCheckpointConfig().setCheckpointTimeout(60 * 1000L);
         env.getCheckpointConfig().setMinPauseBetweenCheckpoints(3000L);
@@ -50,7 +50,7 @@ public class DimApp {
          String groupid = "dim_sink_app";
         DataStreamSource<String> gmallDS  = env.addSource(KafkaUtils.getKafkaConsumer(topic, groupid));
 
-        OutputTag<String> dirtyTag = new OutputTag<String>("dirty");
+        OutputTag<String> dirtyTag = new OutputTag<String>("dirty"){};
         //过滤json格式的数据
         SingleOutputStreamOperator<JSONObject> jsonObj = gmallDS.process(new ProcessFunction<String, JSONObject>() {
             @Override
