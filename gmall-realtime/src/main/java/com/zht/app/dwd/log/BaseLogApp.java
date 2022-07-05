@@ -1,6 +1,7 @@
 package com.zht.app.dwd.log;
 
 import com.alibaba.fastjson.JSONObject;
+import com.zht.utils.DateFormatUtil;
 import com.zht.utils.KafkaUtils;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -24,8 +25,6 @@ import java.util.concurrent.TimeUnit;
 
 public class BaseLogApp {
     public static void main(String[] args) {
-
-
         //1.获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
@@ -58,26 +57,39 @@ public class BaseLogApp {
         //3.将数据转换为json格式 并过滤掉非JSon格式的数据
         KeyedStream<JSONObject, String> keyedByMidStream = jsonObjDS.keyBy(json -> json.getJSONObject("common").getString("mid"));
         keyedByMidStream.map(new RichMapFunction<JSONObject, JSONObject>() {
-
             private ValueState<String> lastVisitDtState;
-
             @Override
             public void open(Configuration parameters) throws Exception {
                 lastVisitDtState = getRuntimeContext().getState(new ValueStateDescriptor<String>("last-vist",String.class));
             }
-
             @Override
             public JSONObject map(JSONObject value) throws Exception {
-
-                return null;
+                String isNew = value.getJSONObject("common").getString("is_new");
+                String lastVisitDt = lastVisitDtState.value();
+                //获取当前数据的时间
+                Long ts = value.getLong("ts");
+                //4.使用状态编程做新老用户校验
+                if("1".equals(isNew)){
+                    String curDt = DateFormatUtil.toDate(ts);
+                    if(lastVisitDt==null){
+                        lastVisitDtState.update(curDt);
+                    }else if(!lastVisitDt.equals(curDt)){
+                      value.getJSONObject("common").put("is_new","0");
+                    }
+                } else if(lastVisitDt==null){
+                    String yesterday = DateFormatUtil.toDate(ts - 24 * 60 * 60 * 1000L);
+                    lastVisitDtState.update(yesterday);
+                }
+                return value;
             }
 
         });
-        //4.使用状态编程做新老用户校验
 
         //5.使用测输出流  对数据进行分流处理 页面浏览：主流   启动日志、曝光日志、动作日志、错误日志都放测输出流
-
-
+        OutputTag<String> startTag = new OutputTag<>("start");
+        OutputTag<String> displayTag = new OutputTag<>("display");
+        OutputTag<String> actionTag = new OutputTag<>("action");
+        OutputTag<String> errorTag = new OutputTag<>("error");
         //提取各个数据流的数据
 
         //将各个流的数据分别写出到kafka中
