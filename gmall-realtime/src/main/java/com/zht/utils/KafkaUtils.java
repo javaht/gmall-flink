@@ -15,14 +15,14 @@ import java.util.Properties;
 
 public class KafkaUtils {
     static String BOOTSTRAP_SERVERS = "hadoop102:9092";
+    static String DEFAULT_TOPIC = "default_topic";
+
     private static  Properties properties =new Properties();
     static{
         properties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
     }
 
     public static FlinkKafkaConsumer<String> getKafkaConsumer(String topic, String groupId) {
-        Properties properties = new Properties();
-
         FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>(topic, new KafkaDeserializationSchema<String>() {
             @Override
             public boolean isEndOfStream(String s) {

@@ -98,7 +98,7 @@ public class BaseLogApp {
             public void processElement(JSONObject value, ProcessFunction<JSONObject, String>.Context ctx, Collector<String> out) throws Exception {
                 String jsonString = value.toJSONString();
 
-                String error = value.getString("error");
+                String error = value.getString("err");
                 if (error != null) {
                     //输出错误日志
                     ctx.output(errorTag, value.toJSONString());
@@ -109,13 +109,13 @@ public class BaseLogApp {
                     //输出数据到启动日志
                     ctx.output(startTag, value.toJSONString());
                 } else {
-
                     //尝试获取曝光数据  取出页面id和时间戳
                     String pageId = value.getJSONObject("page").getString("page_id");
                     Long ts = value.getLong("ts");
                     String common = value.getString("common");
+
                     JSONArray displays = value.getJSONArray("displays");
-                    if (displays.size() > 0) {
+                    if (displays!=null && displays.size() > 0) {
                         for (int i = 0; i < displays.size(); i++) {
                             JSONObject display = displays.getJSONObject(i);
                             display.put("page_id", pageId);
@@ -124,6 +124,18 @@ public class BaseLogApp {
                             ctx.output(displayTag, display.toJSONString());
                         }
                     }
+
+                    JSONArray actions = value.getJSONArray("actions");
+                    if (actions!=null && actions.size() > 0) {
+                        for (int i = 0; i < actions.size(); i++) {
+                            JSONObject action = actions.getJSONObject(i);
+                            action.put("page_id", pageId);
+                            action.put("ts", ts);
+                            action.put("common", common);
+                            ctx.output(actionTag, action.toJSONString());
+                        }
+                    }
+
                     value.remove("displays");
                     value.remove("actions");
                     out.collect(value.toJSONString());
