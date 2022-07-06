@@ -30,13 +30,13 @@ public class BaseLogApp {
         //1.获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
-        env.getCheckpointConfig().setCheckpointTimeout(60 * 1000L);
-        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(3000L);
-        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-        env.setRestartStrategy(RestartStrategies.failureRateRestart(10, Time.of(1L, TimeUnit.DAYS), Time.of(3L, TimeUnit.MINUTES)));
-        env.setStateBackend(new HashMapStateBackend());
-        System.setProperty("HADOOP_USER_NAME", "root");
+//        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
+//        env.getCheckpointConfig().setCheckpointTimeout(60 * 1000L);
+//        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(3000L);
+//        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+//        env.setRestartStrategy(RestartStrategies.failureRateRestart(10, Time.of(1L, TimeUnit.DAYS), Time.of(3L, TimeUnit.MINUTES)));
+//        env.setStateBackend(new HashMapStateBackend());
+//        System.setProperty("HADOOP_USER_NAME", "root");
         //2.读取kafka topic_log数据主题的数据创建流
         DataStreamSource<String> kafKaDs = env.addSource(KafkaUtils.getKafkaConsumer("topic_log", "base_log_app"));
 
