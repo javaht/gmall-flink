@@ -164,10 +164,10 @@ public class BaseLogApp {
         String error_topic = "dwd_traffic_error_log";
 
         pageDs.addSink(KafkaUtils.getKafkaProducer(page_topic));
-        pageDs.addSink(KafkaUtils.getKafkaProducer(start_topic));
-        pageDs.addSink(KafkaUtils.getKafkaProducer(display_topic));
-        pageDs.addSink(KafkaUtils.getKafkaProducer(action_topic));
-        pageDs.addSink(KafkaUtils.getKafkaProducer(error_topic));
+        startDs.addSink(KafkaUtils.getKafkaProducer(start_topic));
+        displayDs.addSink(KafkaUtils.getKafkaProducer(display_topic));
+        actionDs.addSink(KafkaUtils.getKafkaProducer(action_topic));
+        errorDs.addSink(KafkaUtils.getKafkaProducer(error_topic));
 
         env.execute("BaseApp");
 
