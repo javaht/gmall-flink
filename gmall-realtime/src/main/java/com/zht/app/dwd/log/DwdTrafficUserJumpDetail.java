@@ -23,6 +23,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+/*
+* 在一个会话中只有一条数据
+* */
 public class DwdTrafficUserJumpDetail {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
