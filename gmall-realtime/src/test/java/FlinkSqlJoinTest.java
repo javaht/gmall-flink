@@ -38,7 +38,7 @@ public class FlinkSqlJoinTest {
               tableEnv.createTemporaryView("t1",bean1Ds);
               tableEnv.createTemporaryView("t2",bean2Ds);
 
-            //内连接
+            //内连接  左表： OnCreateAndWrite  右表：OnCreateAndWrite
         tableEnv.sqlQuery("select t1.id,t1.name,t2.sex from t1 join t2 on t1.id = t2.id").execute().print();
 
     }
