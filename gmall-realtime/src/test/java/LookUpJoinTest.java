@@ -34,7 +34,7 @@ public class LookUpJoinTest {
         //创建LookUp表
         tableEnv.executeSql("" +
                 "CREATE TEMPORARY TABLE my_base_dic ( " +
-                "  dic_code STRING, " +
+                "  dic_code STRING, " +         //注意这个列名需要和表对应上
                 "  dic_name STRING" +
                 ") WITH ( " +
                 "  'connector' = 'jdbc', " +
