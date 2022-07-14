@@ -58,8 +58,7 @@ public class KafkaUtils {
 
         return " with ('connector' = 'kafka', " +
                 " 'topic' = '" + topic + "'," +
-                " 'properties.bootstrap.servers' = '" +
-                BOOTSTRAP_SERVERS + "', " +
+                " 'properties.bootstrap.servers' = '"+BOOTSTRAP_SERVERS+"', " +
                 " 'properties.group.id' = '" + groupId + "', " +
                 " 'format' = 'json', " +
                 " 'scan.startup.mode' = 'group-offsets')";
@@ -90,6 +89,7 @@ public class KafkaUtils {
                 "`database` String, " +
                 "`table` String, " +
                 "`type`  String, " +
+                " `ts`  String,  "+
                 "`data` Map<String,String>, " +
                 "`old`  Map<String,String>, " +
                 "`pt` AS PROCTIME() " +
