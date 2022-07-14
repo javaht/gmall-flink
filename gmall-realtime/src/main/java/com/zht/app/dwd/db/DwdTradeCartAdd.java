@@ -1,9 +1,4 @@
 package com.zht.app.dwd.db;
-/*
- * @Author root
- * @Data  2022/7/13 17:03
- * @Description
- * */
 import com.zht.utils.KafkaUtils;
 import com.zht.utils.MysqlUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -13,11 +8,15 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
 
 import java.time.Duration;
-//总体做了四件事
-// 1.读取mysql购物车表创建购物车的临时表为card_add
-//2. base_dic为lookup table作为维表 关联  card_add 得到关联后的表resultTable
-//3. 创建kafka中关联后的表  将resultTable插入数据
-//4. 插入数据
+
+
+/*
+*
+1.读取mysql购物车表创建购物车的临时表为card_add
+2. base_dic为lookup table作为维表 关联  card_add 得到关联后的表resultTable
+3. 创建kafka中关联后的表  将resultTable插入数据
+4. 插入数据
+* */
 public class DwdTradeCartAdd {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -86,23 +85,23 @@ public class DwdTradeCartAdd {
 
         String sinkTopic = "dwd_trade_card_add";
         tableEnv.executeSql("CREATE TABLE dwd_trade_card_add(   " +
-                "id   String,   " +
-                "user_id   String,   " +
-                "sku_id   String,   " +
-                "cart_price   String,   " +
-                "sku_num   String,   " +
-                "sku_name   String,   " +
-                "is_checked   String,   " +
-                "create_time   String,   " +
-                "operate_time   String,   " +
-                "is_ordered   String,   " +
-                "order_time   String,   " +
-                "source_type   String,   " +
-                "source_id   String,   " +
-                "dic_name     String   " +
+                "id   string,   " +
+                "user_id   string,   " +
+                "sku_id   string,   " +
+                "cart_price   string,   " +
+                "sku_num    int,   " +
+                "sku_name   string,   " +
+                "is_checked   string,   " +
+                "create_time   string,   " +
+                "operate_time   string,   " +
+                "is_ordered   string,   " +
+                "order_time   string,   " +
+                "source_type   string,   " +
+                "source_id   string,   " +
+                "dic_name     string   " +
                 ") "+KafkaUtils.getKafkaDDL(sinkTopic,""));
 
-        tableEnv.executeSql("insert into dwd_trade_card_add select * from resultTable");
+        tableEnv.executeSql("insert into dwd_trade_card_add select * from resultTable").print();
 
 
 
