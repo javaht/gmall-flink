@@ -1,11 +1,16 @@
+import com.zht.utils.KafkaUtils;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.types.Row;
 
 import java.time.Duration;
 
 public class FlinkSqlLeftJoinTest {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         //获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -33,8 +38,12 @@ public class FlinkSqlLeftJoinTest {
         //左外连接     左表：OnReadAndWrite  右表： OnCreateAndWrite
         //右外连接     左表：OnCreateAndWrite  右表： OnReadAndWrite
         //全外连接     左表：OnCreateAndWrite  右表： OnReadAndWrite
-        tableEnv.sqlQuery("select t1.id,t1.name,t2.sex from t1 left join t2 on t1.id = t2.id").execute().print();
+        Table table = tableEnv.sqlQuery("select t1.id,t1.name,t2.sex from t1 left join t2 on t1.id = t2.id");
 
+        tableEnv.createTemporaryView("t",table);
+        tableEnv.executeSql("create table result_table (id string,name string,sex string, PRIMARY KEY (id) NOT ENFORCED) "+ KafkaUtils.getUpsertKafkaDDL("test"));
+        tableEnv.executeSql("insert into result_table select * from t ").print();
 
+        env.execute("");
     }
 }
