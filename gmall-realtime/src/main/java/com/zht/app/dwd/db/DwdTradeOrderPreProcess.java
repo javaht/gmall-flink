@@ -1,7 +1,7 @@
 package com.zht.app.dwd.db;
 
 import com.zht.utils.KafkaUtils;
-import org.apache.flink.streaming.api.datastream.DataStream;
+import com.zht.utils.MysqlUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -35,6 +35,7 @@ public class DwdTradeOrderPreProcess {
                 "data['split_total_amount']    split_total_amount, " +
                 "data['split_activity_amount'] split_activity_amount, " +
                 "data['split_coupon_amount']   split_coupon_amount, " +
+                 "ts od_ts,"+
                 "pt  from topic_db where `database` ='gmall' and `table` = 'order_detail' and `type`='insert'");   //sqlQuery 查询出来的结果是个变量 不能直接在sql中使用
         tableEnv.createTemporaryView("order_detail",orderDetailTable);
 
@@ -60,6 +61,7 @@ public class DwdTradeOrderPreProcess {
                 "data['original_total_amount']  original_total_amount, " +
                 "data['feight_fee']             feight_fee, " +
                 "data['feight_fee_reduce']      feight_fee_reduce, " +
+                "ts oi_ts,"+
                 "`type`,`old` " +
                 "from topic_db where `database` = 'gmall' and `table` = 'order_info'  and(`type` = 'insert' or `type` = 'update')");
         tableEnv.createTemporaryView("order_info",orderinfoTable);
@@ -77,7 +79,7 @@ public class DwdTradeOrderPreProcess {
                 "data['sku_id']              sku_id,  " +
                 "data['create_time']         create_time  " +
                 "from topic_db where `database` = 'gmall' and `table` = 'order_detail_activity'  and(`type` = 'insert')");
-         tableEnv.createTemporaryView("orderActivity",orderDetailActivityTable);
+         tableEnv.createTemporaryView("order_detail_activity",orderDetailActivityTable);
 //        Table table = tableEnv.sqlQuery("select * from orderDetailActivity");
 //        tableEnv.toAppendStream(table,Row.class).print(">>>>>>>>>>>>>>>>");
          //过滤出订单明细购物券数据
@@ -90,14 +92,89 @@ public class DwdTradeOrderPreProcess {
                 "data['sku_id']              sku_id,   " +
                 "data['create_time']         create_time   " +
                 "from topic_db where `database` = 'gmall' and `table` = 'order_detail_coupon'  and(`type` = 'insert')");
-           tableEnv.createTemporaryView("orderCoupon",order_detail_couponTable);
+           tableEnv.createTemporaryView("order_detail_coupon",order_detail_couponTable);
 
 //        Table table = tableEnv.sqlQuery("select * from  orderDetailCoupon");
 //        tableEnv.toAppendStream(table,Row.class).print(">>>>>>>>>>>>>>>>");
+        // 建立 MySQL-LookUp 字典表
+        tableEnv.executeSql(MysqlUtils.getBaseDicLookUpDDL());
+
         //关联五张表
+        Table resultTable = tableEnv.sqlQuery("select  " +
+                "od.id, " +
+                "od.order_id, " +
+                "oi.user_id, " +
+                "oi.order_status, " +
+                "od.sku_id, " +
+                "od.sku_name, " +
+                "oi.province_id, " +
+                "act.activity_id, " +
+                "act.activity_rule_id, " +
+                "cou.coupon_id, " +
+                "date_format(od.create_time, 'yyyy-MM-dd') date_id, " +
+                "od.create_time, " +
+                "date_format(oi.operate_time, 'yyyy-MM-dd') operate_date_id, " +
+                "oi.operate_time, " +
+                "od.source_id, " +
+                "od.source_type, " +
+                "dic.dic_name source_type_name, " +
+                "od.sku_num, " +
+                "od.split_original_amount, " +
+                "od.split_activity_amount, " +
+                "od.split_coupon_amount, " +
+                "od.split_total_amount, " +
+                "oi.`type`, " +
+                "oi.`old`, " +
+                "od.od_ts, " +
+                "oi.oi_ts, " +
+                "current_row_timestamp() row_op_ts " +
+                "from order_detail od  " +
+                "join order_info oi on od.order_id = oi.id " +
+                "left join order_detail_activity act on od.id = act.order_detail_id " +
+                "left join order_detail_coupon cou on od.id = cou.order_detail_id " +
+                "left join `base_dic` for system_time as of od.pt as dic on od.source_type = dic.dic_code");
+        tableEnv.createTemporaryView("result_table", resultTable);
+//        Table table = tableEnv.sqlQuery("select * from  result_table");
+//        tableEnv.toChangelogStream(table).print(">>>>>>>>>>>>>>>>");
 
 
-        tableEnv.sqlQuery("select  from   ");
+        //创建upsert-kafka的表
+        tableEnv.executeSql("" +
+                "create table dwd_trade_order_pre_process( " +
+                "id string, " +
+                "order_id string, " +
+                "user_id string, " +
+                "order_status string, " +
+                "sku_id string, " +
+                "sku_name string, " +
+                "province_id string, " +
+                "activity_id string, " +
+                "activity_rule_id string, " +
+                "coupon_id string, " +
+                "date_id string, " +
+                "create_time string, " +
+                "operate_date_id string, " +
+                "operate_time string, " +
+                "source_id string, " +
+                "source_type string, " +
+                "source_type_name string, " +
+                "sku_num string, " +
+                "split_original_amount string, " +
+                "split_activity_amount string, " +
+                "split_coupon_amount string, " +
+                "split_total_amount string, " +
+                "`type` string, " +
+                "`old` map<string,string>, " +
+                "od_ts string, " +
+                "oi_ts string, " +
+                "row_op_ts timestamp_ltz(3), " +
+                "primary key(id) not enforced " +
+                ")" + KafkaUtils.getUpsertKafkaDDL("dwd_trade_order_pre_process"));
+
+
+        //向upsert-kafka的表插入数据
+        tableEnv.executeSql("insert into dwd_trade_order_pre_process select  * from result_table").print();;
+
 
 
         env.execute("DwdTradeOrderPreProcess");
