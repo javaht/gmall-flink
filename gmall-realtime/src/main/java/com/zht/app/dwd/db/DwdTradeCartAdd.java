@@ -33,7 +33,7 @@ public class DwdTradeCartAdd {
 
         String topic = "topic_db";
         String groupid ="dwd_trade_cart_add";
-        tableEnv.executeSql(KafkaUtils.getTopicDbDDL(groupid));
+        tableEnv.executeSql(KafkaUtils.getTopicDbDDL(groupid));//这里其实是创建了一张kafka流的表
 
            //这里只要新增购物车的数据 所以类型是插入或者更新并且old[sku_num] 不可以为空
         Table cartAddTable = tableEnv.sqlQuery("" +

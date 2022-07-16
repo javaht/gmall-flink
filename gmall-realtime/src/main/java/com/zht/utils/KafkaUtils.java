@@ -48,6 +48,23 @@ public class KafkaUtils {
 
         return new FlinkKafkaProducer<String>(topic,new SimpleStringSchema(),properties);
     }
+    /*
+     * 获取消费者组的数据
+     * */
+
+    public  static String getTopicDbDDL(String groupid){
+        return "create  table topic_db( " +
+                "`database` String, " +
+                "`table` String, " +
+                "`type`  String, " +
+                " `ts`  String,  "+
+                "`data` Map<String,String>, " +
+                "`old`  Map<String,String>, " +
+                "`pt` AS PROCTIME() " +
+                ")"+KafkaUtils.getKafkaDDL("topic_db",groupid);
+    }
+
+
     /**
      * Kafka-Source DDL 语句
      * @param topic   数据源主题
@@ -79,21 +96,6 @@ public class KafkaUtils {
                 "  'key.format' = 'json', " +
                 "  'value.format' = 'json' " +
                 ")";
-    }
-    /*
-    * 获取消费者组的数据
-    * */
-
-    public  static String getTopicDbDDL(String groupid){
-       return "create  table topic_db( " +
-                "`database` String, " +
-                "`table` String, " +
-                "`type`  String, " +
-                " `ts`  String,  "+
-                "`data` Map<String,String>, " +
-                "`old`  Map<String,String>, " +
-                "`pt` AS PROCTIME() " +
-                ")"+KafkaUtils.getKafkaDDL("topic_db",groupid);
     }
 
 
