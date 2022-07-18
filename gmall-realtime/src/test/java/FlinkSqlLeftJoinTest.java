@@ -1,4 +1,5 @@
-import com.zht.utils.KafkaUtils;
+
+import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -41,7 +42,7 @@ public class FlinkSqlLeftJoinTest {
         Table table = tableEnv.sqlQuery("select t1.id,t1.name,t2.sex from t1 left join t2 on t1.id = t2.id");
 
         tableEnv.createTemporaryView("t",table);
-        tableEnv.executeSql("create table result_table (id string,name string,sex string, PRIMARY KEY (id) NOT ENFORCED) "+ KafkaUtils.getUpsertKafkaDDL("test"));
+        tableEnv.executeSql("create table result_table (id string,name string,sex string, PRIMARY KEY (id) NOT ENFORCED) "+ MyKafkaUtil.getUpsertKafkaDDL("test"));
         tableEnv.executeSql("insert into result_table select * from t ").print();
 
         env.execute("");
