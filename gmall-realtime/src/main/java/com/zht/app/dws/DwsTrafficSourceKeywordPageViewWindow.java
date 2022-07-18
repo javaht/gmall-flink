@@ -6,9 +6,12 @@ package com.zht.app.dws;
  * */
 
 import com.zht.app.func.SplitFunction;
+import com.zht.bean.KeywordBean;
 import com.zht.utils.MyKafkaUtil;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
 public class DwsTrafficSourceKeywordPageViewWindow {
@@ -38,7 +41,7 @@ public class DwsTrafficSourceKeywordPageViewWindow {
         //获取目标数据 并保存为表
         Table keyWordtable = tableEnv.sqlQuery("select    " +
                 "page['item']  key_word,  " +
-                "rt  " +
+                "rt,ts  " +
                 "from  page_log   " +
                 "where page['item'] is not null    " +
                 "and   page['last_page_id'] ='search'  " +
@@ -49,16 +52,22 @@ public class DwsTrafficSourceKeywordPageViewWindow {
         tableEnv.createFunction("SplitFunction", SplitFunction.class);
 
         //使用自定义函数分词处理
-        Table splitTable = tableEnv.sqlQuery("env.sqlQuery(SELECT    " +
-                //              " key_word,   " +  原字段
-                " rt,   " +
+        Table splitTable = tableEnv.sqlQuery("SELECT    " +
                 " word,   " +
-                " length   " +
-                " FROM MyTable, LATERAL TABLE(SplitFunction(key_word)))");
+                " rt   " +
+                " FROM key_word_table, LATERAL TABLE(SplitFunction(key_word))");
         tableEnv.createTemporaryView("split_table",splitTable);
+        //实现分组开窗聚合
+        Table resultTable = tableEnv.sqlQuery("select 'search' source, " +
+                "DATE_FORMAT(TUMBLE_START(rt,INTERVAL '10' SECOND),'yyyy-MM-dd HH:mm:ss') stt," +   //窗口开始时间
+                "DATE_FORMAT(TUMBLE_END(rt,INTERVAL '10' SECOND),'yyyy-MM-dd HH:mm:ss')  edt,"  +       //窗口结束时间
+                "word  keyword," +
+                "count(1) keyword_count," +
+                "UNIX_TIMESTAMP() ts " +
+                " from split_table group by TUMBLE(rt,INTERVAL '10' SECOND),word");
+        DataStream<KeywordBean> keywordBeanDS = tableEnv.toAppendStream(resultTable, KeywordBean.class);
+        keywordBeanDS.print(">>>>>>>>>>>>>>>>>>>>");
 
-
-
-        env.execute("");
+        env.execute("DwsTrafficSourceKeywordPageViewWindow");
     }
 }
