@@ -1,121 +1,133 @@
 package com.zht.app.dwd.db;
 
-import com.zht.utils.KafkaUtils;
-import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.api.common.time.Time;
-import org.apache.flink.runtime.state.hashmap.HashMapStateBackend;
-import org.apache.flink.streaming.api.CheckpointingMode;
-import org.apache.flink.streaming.api.environment.CheckpointConfig;
+import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
-import java.time.ZoneId;
-
 public class DwdTradeOrderAdd {
-    public static void main(String[] args) {
+
+    public static void main(String[] args) throws Exception {
+
+        //TODO 1.获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(4);
+        env.setParallelism(1);
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
-        // TODO 2. 启用状态后端
-//        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
-//        env.getCheckpointConfig().setCheckpointTimeout(60 * 1000L);
-//        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-//        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(3000L);
-//        env.setRestartStrategy(RestartStrategies.failureRateRestart(3, Time.days(1L), Time.minutes(3L)));
-//        env.setStateBackend(new HashMapStateBackend());
-//        env.getCheckpointConfig().setCheckpointStorage("hdfs://hadoop102:8020/ck");
-//        System.setProperty("HADOOP_USER_NAME", "atguigu");
-//        tableEnv.getConfig().setLocalTimeZone(ZoneId.of("GMT+8"));
+        //env.setStateBackend(new HashMapStateBackend());
+        //env.enableCheckpointing(5000L);
+        //env.getCheckpointConfig().setCheckpointTimeout(10000L);
+        //env.getCheckpointConfig().setCheckpointStorage("hdfs:xxx:8020//xxx/xx");
 
+        //TODO 2.使用DDL的方式读取 Kafka dwd_trade_order_detail 主题的数据
         tableEnv.executeSql("" +
-                "create table dwd_trade_order_pre_process( " +
-                "id string, " +
-                "order_id string, " +
-                "user_id string, " +
-                "order_status string, " +
-                "sku_id string, " +
-                "sku_name string, " +
-                "province_id string, " +
-                "activity_id string, " +
-                "activity_rule_id string, " +
-                "coupon_id string, " +
-                "date_id string, " +
-                "create_time string, " +
-                "operate_date_id string, " +
-                "operate_time string, " +
-                "source_id string, " +
-                "source_type string, " +
-                "source_type_name string, " +
-                "sku_num string, " +
-                "split_original_amount string, " +
-                "split_activity_amount string, " +
-                "split_coupon_amount string, " +
-                "split_total_amount string, " +
-                "`type` string, " +
-                "`old` map<string,string>, " +
-                "od_ts string, " +
-                "oi_ts string, " +
-                "row_op_ts timestamp_ltz(3) )" + KafkaUtils.getKafkaDDL("dwd_trade_order_pre_process", "dwd_trade_order_detail"));
+                "create table dwd_trade_order_detail_table( " +
+                "    `order_detail_id` string, " +
+                "    `order_id` string, " +
+                "    `sku_id` string, " +
+                "    `sku_name` string, " +
+                "    `order_price` string, " +
+                "    `sku_num` string, " +
+                "    `order_create_time` string, " +
+                "    `source_type` string, " +
+                "    `source_id` string, " +
+                "    `split_original_amount` string, " +
+                "    `split_total_amount` string, " +
+                "    `split_activity_amount` string, " +
+                "    `split_coupon_amount` string, " +
+                "    `pt` TIMESTAMP_LTZ(3), " +
+                "    `consignee` string, " +
+                "    `consignee_tel` string, " +
+                "    `total_amount` string, " +
+                "    `order_status` string, " +
+                "    `user_id` string, " +
+                "    `payment_way` string, " +
+                "    `out_trade_no` string, " +
+                "    `trade_body` string, " +
+                "    `operate_time` string, " +
+                "    `expire_time` string, " +
+                "    `process_status` string, " +
+                "    `tracking_no` string, " +
+                "    `parent_order_id` string, " +
+                "    `province_id` string, " +
+                "    `activity_reduce_amount` string, " +
+                "    `coupon_reduce_amount` string, " +
+                "    `original_total_amount` string, " +
+                "    `feight_fee` string, " +
+                "    `feight_fee_reduce` string, " +
+                "    `type` string, " +
+                "    `old` map<string,string>, " +
+                "    `activity_id` string, " +
+                "    `activity_rule_id` string, " +
+                "    `activity_create_time` string , " +
+                "    `coupon_id` string, " +
+                "    `coupon_use_id` string, " +
+                "    `coupon_create_time` string , " +
+                "    `dic_name` string " +
+                ")" + MyKafkaUtil.getKafkaDDL("dwd_trade_order_detail", "dwd_trade_order_add_211027"));
 
-
-        // TODO 4. 过滤下单数据
-        Table filteredTable = tableEnv.sqlQuery("" +
+        //TODO 3.过滤出下单数据
+        Table filterTable = tableEnv.sqlQuery("" +
                 "select " +
-                "id,  " +
-                "order_id,  " +
-                "user_id,  " +
-                "sku_id,  " +
-                "sku_name,  " +
-                "province_id,  " +
-                "activity_id,  " +
-                "activity_rule_id,  " +
-                "coupon_id,  " +
-                "date_id,  " +
-                "create_time,  " +
-                "source_id,  " +
-                "source_type source_type_code,  " +
-                "source_type_name,  " +
-                "sku_num,  " +
-                "split_original_amount,  " +
-                "split_activity_amount,  " +
-                "split_coupon_amount,  " +
-                "split_total_amount,  " +
-                "od_ts ts,  " +
-                "row_op_ts  " +
-                "from dwd_trade_order_pre_process where `type`='insert'");
-        tableEnv.createTemporaryView("filtered_table", filteredTable);
+                "    * " +
+                "from dwd_trade_order_detail_table " +
+                "where `type`='insert'");
+        tableEnv.createTemporaryView("filter_table", filterTable);
 
-        //创建kafka下单数据表
+        //TODO 4.创建Kafka下单数据表
         tableEnv.executeSql("" +
-                "create table dwd_trade_order_detail(   " +
-                "id string,   " +
-                "order_id string,   " +
-                "user_id string,   " +
-                "sku_id string,   " +
-                "sku_name string,   " +
-                "province_id string,   " +
-                "activity_id string,   " +
-                "activity_rule_id string,   " +
-                "coupon_id string,   " +
-                "date_id string,   " +
-                "create_time string,   " +
-                "source_id string,   " +
-                "source_type_code string,   " +
-                "source_type_name string,   " +
-                "sku_num string,   " +
-                "split_original_amount string,   " +
-                "split_activity_amount string,   " +
-                "split_coupon_amount string,   " +
-                "split_total_amount string,   " +
-                "ts string,   " +
-                "row_op_ts timestamp_ltz(3),   " +
-                "primary key(id) not enforced   " +
-                ")" + KafkaUtils.getUpsertKafkaDDL("dwd_trade_order_detail"));
+                "create table dwd_trade_order_add_table( " +
+                "    `order_detail_id` string, " +
+                "    `order_id` string, " +
+                "    `sku_id` string, " +
+                "    `sku_name` string, " +
+                "    `order_price` string, " +
+                "    `sku_num` string, " +
+                "    `order_create_time` string, " +
+                "    `source_type` string, " +
+                "    `source_id` string, " +
+                "    `split_original_amount` string, " +
+                "    `split_total_amount` string, " +
+                "    `split_activity_amount` string, " +
+                "    `split_coupon_amount` string, " +
+                "    `pt` TIMESTAMP_LTZ(3), " +
+                "    `consignee` string, " +
+                "    `consignee_tel` string, " +
+                "    `total_amount` string, " +
+                "    `order_status` string, " +
+                "    `user_id` string, " +
+                "    `payment_way` string, " +
+                "    `out_trade_no` string, " +
+                "    `trade_body` string, " +
+                "    `operate_time` string, " +
+                "    `expire_time` string, " +
+                "    `process_status` string, " +
+                "    `tracking_no` string, " +
+                "    `parent_order_id` string, " +
+                "    `province_id` string, " +
+                "    `activity_reduce_amount` string, " +
+                "    `coupon_reduce_amount` string, " +
+                "    `original_total_amount` string, " +
+                "    `feight_fee` string, " +
+                "    `feight_fee_reduce` string, " +
+                "    `type` string, " +
+                "    `old` map<string,string>, " +
+                "    `activity_id` string, " +
+                "    `activity_rule_id` string, " +
+                "    `activity_create_time` string , " +
+                "    `coupon_id` string, " +
+                "    `coupon_use_id` string, " +
+                "    `coupon_create_time` string , " +
+                "    `dic_name` string " +
+                ")" + MyKafkaUtil.getKafkaDDL("dwd_trade_order_add", ""));
 
-        // TODO 6. 将数据写出到 Kafka
-        tableEnv.executeSql("insert into dwd_trade_order_detail  select * from filtered_table");
+        //TODO 5.将数据写出到Kafka
+        tableEnv.executeSql("insert into dwd_trade_order_add_table select * from filter_table")
+                .print();
+
+        //TODO 6.启动任务
+        env.execute("DwdTradeOrderAdd");
 
     }
+
 }

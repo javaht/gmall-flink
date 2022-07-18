@@ -10,7 +10,7 @@ import com.zht.app.func.DimSinkFunction;
 import com.zht.app.func.TableProcessFunction;
 import com.zht.bean.TableProcess;
 import com.zht.common.GmallConfig;
-import com.zht.utils.KafkaUtils;
+import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.state.BroadcastState;
@@ -55,7 +55,7 @@ public class DimApp {
         //获取kafka的数据
          String topic = "topic_db";
          String groupid = "dim_sink_app";
-        DataStreamSource<String> gmallDS  = env.addSource(KafkaUtils.getKafkaConsumer(topic, groupid));
+        DataStreamSource<String> gmallDS  = env.addSource(MyKafkaUtil.getKafkaConsumer(topic, groupid));
 
         OutputTag<String> dirtyTag = new OutputTag<String>("dirty"){};
         //过滤json格式的数据

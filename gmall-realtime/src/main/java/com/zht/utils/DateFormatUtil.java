@@ -4,10 +4,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-
 import java.util.Date;
 
 public class DateFormatUtil {
+
     private static final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter dtfFull = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -39,6 +39,6 @@ public class DateFormatUtil {
     }
 
     public static void main(String[] args) {
-        System.out.println(toYmdHms(System.currentTimeMillis()));
+        System.out.println(toYmdHms(1650702276000L));
     }
 }
