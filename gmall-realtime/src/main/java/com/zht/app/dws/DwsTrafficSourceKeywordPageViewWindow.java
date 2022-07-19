@@ -67,11 +67,13 @@ public class DwsTrafficSourceKeywordPageViewWindow {
                 "UNIX_TIMESTAMP() ts " +
                 " from split_table group by TUMBLE(rt,INTERVAL '10' SECOND),word");
         DataStream<KeywordBean> keywordBeanDS = tableEnv.toAppendStream(resultTable, KeywordBean.class);
-     //   keywordBeanDS.print(">>>>>>>>>>>>>>>>>>>>");
+        keywordBeanDS.print(">>>>>>>>>>>>>>>>>>>>");
 
 
+         //将数据写入clickhouse
+        keywordBeanDS.addSink(MyClickHouseUtil.getClickHouseSink("insert into dws_traffic_source_keyword_page_view_window values(?,?,?,?,?,?)"));
 
-        keywordBeanDS.addSink(MyClickHouseUtil.getClickHouseSink();
+
         env.execute("DwsTrafficSourceKeywordPageViewWindow");
     }
 }
