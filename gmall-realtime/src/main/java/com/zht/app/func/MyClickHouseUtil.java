@@ -15,7 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class MyClickHouseUtil {
-
+ //这里的T其实就是一个javabean
     public static <T> SinkFunction<T> getClickHouseSink(String sql) {
 
         return JdbcSink.<T>sink(sql,
@@ -33,14 +33,16 @@ public class MyClickHouseUtil {
                         //}
 
                         Field[] fields = clz.getDeclaredFields();
+                        //getFields() 获得某个类的所有的公共（public）的字段，包括父类。
+                        //getDeclaredFields() 获得某个类的所有申明的字段，即包括 public、private 和 proteced,但是不包括父类的申明字段。
 
                         int offset = 0;
                         for (int i = 0; i < fields.length; i++) {
 
                             Field field = fields[i];
-                            field.setAccessible(true);
+                            field.setAccessible(true);//取消java语言访问检查
 
-                            TransientSink transientSink = field.getAnnotation(TransientSink.class);
+                            TransientSink transientSink = field.getAnnotation(TransientSink.class);//获取field的注解类型
                             if (transientSink != null) {
                                 offset++;
                                 continue;

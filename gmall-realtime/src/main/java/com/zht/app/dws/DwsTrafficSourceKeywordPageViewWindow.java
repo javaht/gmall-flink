@@ -5,6 +5,7 @@ package com.zht.app.dws;
  * @Description
  * */
 
+import com.zht.app.func.MyClickHouseUtil;
 import com.zht.app.func.SplitFunction;
 import com.zht.bean.KeywordBean;
 import com.zht.utils.MyKafkaUtil;
@@ -66,8 +67,11 @@ public class DwsTrafficSourceKeywordPageViewWindow {
                 "UNIX_TIMESTAMP() ts " +
                 " from split_table group by TUMBLE(rt,INTERVAL '10' SECOND),word");
         DataStream<KeywordBean> keywordBeanDS = tableEnv.toAppendStream(resultTable, KeywordBean.class);
-        keywordBeanDS.print(">>>>>>>>>>>>>>>>>>>>");
+     //   keywordBeanDS.print(">>>>>>>>>>>>>>>>>>>>");
 
+
+
+        keywordBeanDS.addSink(MyClickHouseUtil.getClickHouseSink();
         env.execute("DwsTrafficSourceKeywordPageViewWindow");
     }
 }
