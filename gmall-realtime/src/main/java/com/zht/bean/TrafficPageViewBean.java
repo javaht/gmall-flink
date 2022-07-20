@@ -2,9 +2,11 @@ package com.zht.bean;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class TrafficPageViewBean {
     // 窗口起始时间
     String stt;
