@@ -43,23 +43,18 @@ public class DwsTrafficVcChArIsNewPageViewWindow {
 //        env.setStateBackend(new HashMapStateBackend());
 //        env.getCheckpointConfig().setCheckpointStorage("hdfs://hadoop102:8020/ck");
 //        System.setProperty("HADOOP_USER_NAME", "root");
-
         //读取3个主题的数据创建三个流
         String page_topic = "dwd_traffic_page_log";
         String uv_topic = "dwd_traffic_unique_visitor_detail";
         String uj_topic = "dwd_traffic_user_jump_detail";
         String groupId = "dws_traffic_vc_ch_ar_isnew_page_view_window";
-
         DataStreamSource<String> pageStringDS = env.addSource(MyKafkaUtil.getKafkaConsumer(page_topic, groupId));
         DataStreamSource<String> uvStringDS = env.addSource(MyKafkaUtil.getKafkaConsumer(uv_topic, groupId));
         DataStreamSource<String> ujStringDS = env.addSource(MyKafkaUtil.getKafkaConsumer(uj_topic, groupId));
-
-
          //处理UV数据
         SingleOutputStreamOperator<TrafficPageViewBean> trafficPageViewWithUvDs = uvStringDS.map(line -> {
             JSONObject jsonObject = JSON.parseObject(line);
             JSONObject common = jsonObject.getJSONObject("common");
-
             return new TrafficPageViewBean("", "",
                     common.getString("vc"),
                     common.getString("ch"),
@@ -70,7 +65,6 @@ public class DwsTrafficVcChArIsNewPageViewWindow {
         SingleOutputStreamOperator<TrafficPageViewBean> trafficPageViewWithUjDs = ujStringDS.map(line -> {
             JSONObject jsonObject = JSON.parseObject(line);
             JSONObject common = jsonObject.getJSONObject("common");
-
             return new TrafficPageViewBean("", "",
                     common.getString("vc"),
                     common.getString("ch"),
@@ -97,7 +91,7 @@ public class DwsTrafficVcChArIsNewPageViewWindow {
                     0L, sv, 1L, page.getLong("during_time"), 0L,
                     jsonObject.getLong("ts"));
         });
-        SingleOutputStreamOperator<TrafficPageViewBean> unionDs = trafficPageViewWithPvDs.union(trafficPageViewWithUjDs, trafficPageViewWithUjDs).
+        SingleOutputStreamOperator<TrafficPageViewBean> unionDs = trafficPageViewWithPvDs.union(trafficPageViewWithUvDs, trafficPageViewWithUjDs).
                 assignTimestampsAndWatermarks(WatermarkStrategy.<TrafficPageViewBean>forBoundedOutOfOrderness(Duration.ofSeconds(10))
                         .withTimestampAssigner(new SerializableTimestampAssigner<TrafficPageViewBean>() {
                             @Override

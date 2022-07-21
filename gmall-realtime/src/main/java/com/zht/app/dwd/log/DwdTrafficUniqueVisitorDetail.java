@@ -20,7 +20,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 //数据流：web/app -> Nginx -> 日志服务器(log) -> Flume -> Kafka(ODS) -> FlinkApp -> Kafka(DWD) -> FlinkApp -> Kafka(DWD)
 //程  序：  Mock -> f1.sh -> Kafka(ZK) -> BaseLogApp -> Kafka(ZK) -> DwdTrafficUniqueVisitorDetail -> Kafka(ZK)
 public class DwdTrafficUniqueVisitorDetail {
-
     public static void main(String[] args) throws Exception {
 
         //TODO 1.获取执行环境
