@@ -2,6 +2,7 @@ package com.zht.app.dws;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.zht.app.func.MyClickHouseUtil;
 import com.zht.bean.TrafficHomeDetailPageViewBean;
 import com.zht.utils.DateFormatUtil;
 import com.zht.utils.MyKafkaUtil;
@@ -9,6 +10,7 @@ import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
@@ -19,6 +21,9 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.util.Collector;
 
@@ -83,7 +88,7 @@ public class DwsTrafficPageViewWindow {
         KeyedStream<JSONObject, String> keyedStream = homeAndDetailPageWitjDS.keyBy(json -> json.getJSONObject("common").getString("mid"));
 
 
-        SingleOutputStreamOperator<TrafficHomeDetailPageViewBean> trafficHomeDetailPageViewBeanSingleOutputStreamOperator = keyedStream.flatMap(new RichFlatMapFunction<JSONObject, TrafficHomeDetailPageViewBean>() {
+        SingleOutputStreamOperator<TrafficHomeDetailPageViewBean> trafficHomeDetailDs = keyedStream.flatMap(new RichFlatMapFunction<JSONObject, TrafficHomeDetailPageViewBean>() {
             private ValueState<String> homeLastVisitDt;
             private ValueState<String> detailLastVisitDt;
 
@@ -100,7 +105,6 @@ public class DwsTrafficPageViewWindow {
                 homeLastVisitDt = getRuntimeContext().getState(homeStateDescript);
                 detailLastVisitDt = getRuntimeContext().getState(detailStateDescript);
             }
-
             @Override
             public void flatMap(JSONObject value, Collector<TrafficHomeDetailPageViewBean> out) throws Exception {
                 String pageId = value.getJSONObject("page").getString("page_id");
@@ -131,6 +135,31 @@ public class DwsTrafficPageViewWindow {
                 }
             }
         });
+
+
+         //开窗聚合
+        SingleOutputStreamOperator<TrafficHomeDetailPageViewBean> resultDs = trafficHomeDetailDs.windowAll(TumblingEventTimeWindows.of(org.apache.flink.streaming.api.windowing.time.Time.seconds(10)))
+                .reduce(new ReduceFunction<TrafficHomeDetailPageViewBean>() {
+                    @Override
+                    public TrafficHomeDetailPageViewBean reduce(TrafficHomeDetailPageViewBean value1, TrafficHomeDetailPageViewBean value2) throws Exception {
+                        value1.setHomeUvCt(value1.getHomeUvCt() + value2.getHomeUvCt());
+                        value1.setGoodDetailUvCt(value1.getGoodDetailUvCt() + value2.getGoodDetailUvCt());
+                        return value1;
+                    }
+                }, new AllWindowFunction<TrafficHomeDetailPageViewBean, TrafficHomeDetailPageViewBean, TimeWindow>() {
+                    @Override
+                    public void apply(TimeWindow window, Iterable<TrafficHomeDetailPageViewBean> values, Collector<TrafficHomeDetailPageViewBean> out) throws Exception {
+                        //获取数据
+                        TrafficHomeDetailPageViewBean pageViewBean = values.iterator().next();
+                        pageViewBean.setStt(DateFormatUtil.toYmdHms(window.getStart()));
+                        pageViewBean.setEdt(DateFormatUtil.toYmdHms(window.getEnd()));
+
+                        out.collect(pageViewBean);
+                    }
+                });
+
+        resultDs.addSink(MyClickHouseUtil.getClickHouseSink("insert into dws_traffic_page_view_window values(?,?,?,?,?)"));
+
 
 
         env.execute("dws_traffic_page_view_window");
