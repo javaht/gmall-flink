@@ -3,6 +3,7 @@ package com.zht.app.dws;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.zht.app.func.MyClickHouseUtil;
 import com.zht.bean.TrafficPageViewBean;
 import com.zht.utils.DateFormatUtil;
 import com.zht.utils.MyKafkaUtil;
@@ -115,6 +116,7 @@ public class DwsTrafficVcChArIsNewPageViewWindow {
 
         WindowedStream<TrafficPageViewBean, Tuple4<String, String, String, String>, TimeWindow> windowedStream = keyedStream.window(TumblingEventTimeWindows.of(Time.seconds(10)));
 
+        //合并三个流并且生成watermnark
         SingleOutputStreamOperator<TrafficPageViewBean> reduceDS = windowedStream.reduce(new ReduceFunction<TrafficPageViewBean>() {
             @Override
             public TrafficPageViewBean reduce(TrafficPageViewBean value1, TrafficPageViewBean value2) throws Exception {
@@ -142,6 +144,10 @@ public class DwsTrafficVcChArIsNewPageViewWindow {
                 out.collect(trafficPageViewBean);
             }
         });
+            //写入到clickhouse
+
+        reduceDS.print(">>>>>>>>");
+        reduceDS.addSink(MyClickHouseUtil.getClickHouseSink("insert into dws_traffic_vc_ch_ar_is_new_page_view_window values(?,?,?,?,?,?,?,?,?,?,?,?)"));
 
 
         //TODO 7.启动任务
