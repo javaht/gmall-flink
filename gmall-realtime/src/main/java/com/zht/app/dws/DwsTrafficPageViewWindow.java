@@ -34,6 +34,8 @@ import java.time.Duration;
  * @Data  2022/7/21 14:54
  * @Description
  * */
+
+//流量域页面浏览各窗口汇总表
 public class DwsTrafficPageViewWindow {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -61,7 +63,7 @@ public class DwsTrafficPageViewWindow {
             @Override
             public boolean filter(JSONObject value) throws Exception {
                 String pageId = value.getJSONObject("page").getString("page_id");
-                return "good_detail".equals(pageId) || "home".equals(pageId);
+                return "good_detail".equals(pageId) || "home".equals(pageId);//这里是拿出两个页面做例子
             }
         });
 //        pageStringDs.flatMap(new FlatMapFunction<String, JSONObject>() {
@@ -84,10 +86,10 @@ public class DwsTrafficPageViewWindow {
                         return element.getLong("ts");
                     }
                 }));
+
         //按照MID分组
         KeyedStream<JSONObject, String> keyedStream = homeAndDetailPageWitjDS.keyBy(json -> json.getJSONObject("common").getString("mid"));
-
-
+        
         SingleOutputStreamOperator<TrafficHomeDetailPageViewBean> trafficHomeDetailDs = keyedStream.flatMap(new RichFlatMapFunction<JSONObject, TrafficHomeDetailPageViewBean>() {
             private ValueState<String> homeLastVisitDt;
             private ValueState<String> detailLastVisitDt;
@@ -157,7 +159,7 @@ public class DwsTrafficPageViewWindow {
                         out.collect(pageViewBean);
                     }
                 });
-
+        resultDs.print(">>>>>>>>>>>>>>>>>>>>>>>>>>");
         resultDs.addSink(MyClickHouseUtil.getClickHouseSink("insert into dws_traffic_page_view_window values(?,?,?,?,?)"));
 
 
