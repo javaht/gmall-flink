@@ -23,7 +23,7 @@ public class DwdTradeCartAdd {
         //env.getCheckpointConfig().setCheckpointStorage("hdfs:xxx:8020//xxx/xx");
 
         //设置状态存储时间
-        tableEnv.getConfig().setIdleStateRetention(Duration.ofSeconds(5));
+        //tableEnv.getConfig().setIdleStateRetention(Duration.ofSeconds(5));
 
         //TODO 2.使用DDL方式读取Kafka topic_db 主题数据
         tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_cart_add"));
@@ -51,7 +51,7 @@ public class DwdTradeCartAdd {
                 "    data['source_id'] source_id, " +
                 "    pt " +
                 "from topic_db " +
-                "where `database`='gmall-211027-flink' " +
+                "where `database`='gmall' " +
                 "and `table`='cart_info' " +
                 "and (`type`='insert'  " +
                 "    or (`type`='update'  " +
@@ -102,7 +102,7 @@ public class DwdTradeCartAdd {
         //TODO 6.将数据写回到Kafka DWD层
         String sinkTopic = "dwd_trade_cart_add";
         tableEnv.executeSql("" +
-                "create table trade_cart_add( " +
+                "create table dwd_trade_cart_add( " +
                 "    id string, " +
                 "    user_id string, " +
                 "    sku_id string, " +
@@ -118,10 +118,9 @@ public class DwdTradeCartAdd {
                 "    source_id string, " +
                 "    dic_name string " +
                 ")" + MyKafkaUtil.getKafkaDDL(sinkTopic, ""));
-        tableEnv.executeSql("insert into trade_cart_add select * from result_table")
-                .print();
+        tableEnv.executeSql("insert into dwd_trade_cart_add select * from result_table");
+    //TODO 7.启动任务
 
-        //TODO 7.启动任务
         env.execute("DwdTradeCartAdd");
 
     }

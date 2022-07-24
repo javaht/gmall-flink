@@ -46,7 +46,7 @@ public class DwdTradeOrderDetail {
                 "    data['split_coupon_amount'] split_coupon_amount, " +
                 "    pt " +
                 "from topic_db " +
-                "where `database`='gmall-211027-flink' " +
+                "where `database`='gmall' " +
                 "and `table`='order_detail' " +
                 "and `type`='insert'");
         tableEnv.createTemporaryView("order_detail", orderDetailTable);
@@ -81,7 +81,7 @@ public class DwdTradeOrderDetail {
                 "    `type`, " +
                 "    `old` " +
                 "from topic_db " +
-                "where `database`='gmall-211027-flink' " +
+                "where `database`='gmall' " +
                 "and `table`='order_info' " +
                 "and (`type`='insert' or `type`='update')");
         tableEnv.createTemporaryView("order_info", orderInfoTable);
@@ -101,7 +101,7 @@ public class DwdTradeOrderDetail {
                 "    data['sku_id'] sku_id, " +
                 "    data['create_time'] create_time " +
                 "from topic_db " +
-                "where `database`='gmall-211027-flink' " +
+                "where `database`='gmall' " +
                 "and `table`='order_detail_activity' " +
                 "and `type`='insert'");
         tableEnv.createTemporaryView("order_activity", orderActivityTable);
@@ -121,7 +121,7 @@ public class DwdTradeOrderDetail {
                 "    data['sku_id'] sku_id, " +
                 "    data['create_time'] create_time " +
                 "from topic_db " +
-                "where `database`='gmall-211027-flink' " +
+                "where `database`='gmall' " +
                 "and `table`='order_detail_coupon' " +
                 "and `type`='insert'");
         tableEnv.createTemporaryView("order_coupon", orderCouponTable);

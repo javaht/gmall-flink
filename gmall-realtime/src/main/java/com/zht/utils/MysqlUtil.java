@@ -16,12 +16,12 @@ public class MysqlUtil {
     public static String mysqlLookUpTableDDL(String tableName) {
         return "WITH ( " +
                 "'connector' = 'jdbc', " +
-                "'url' = 'jdbc:mysql://hadoop102:3306/gmall-211027-flink', " +
+                "'url' = 'jdbc:mysql://hadoop102:3306/gmall', " +
                 "'table-name' = '" + tableName + "', " +
                 "'lookup.cache.max-rows' = '100', " +
                 "'lookup.cache.ttl' = '1 hour', " +
                 "'username' = 'root', " +
-                "'password' = '000000', " +
+                "'password' = '123456', " +
                 "'driver' = 'com.mysql.cj.jdbc.Driver' " +
                 ")";
     }

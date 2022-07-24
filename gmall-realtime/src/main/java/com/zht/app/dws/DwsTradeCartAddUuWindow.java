@@ -55,12 +55,16 @@ public class DwsTradeCartAddUuWindow {
                 .withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
                     @Override
                     public long extractTimestamp(JSONObject element, long recordTimestamp) {
-                        String createtime = element.getString("create_time");
-                        return DateFormatUtil.toTs(createtime, true);
+
+                        String dateTime = element.getString("operate_time");
+
+                        if(dateTime ==null){
+                            dateTime = element.getString("create_time");
+                        }
+                        return DateFormatUtil.toTs(dateTime, true);
                     }
                 }));
         KeyedStream<JSONObject, String> JsonObj = waterMarkDs.keyBy(json -> json.getString("user_id"));
-
 
         SingleOutputStreamOperator<CartAddUuBean> flatDs = JsonObj.flatMap(new RichFlatMapFunction<JSONObject, CartAddUuBean>() {
             private ValueState<String> lastCartAddDt;
@@ -85,6 +89,7 @@ public class DwsTradeCartAddUuWindow {
                 }
             }
         });
+
 
         SingleOutputStreamOperator<CartAddUuBean> reduceDs = flatDs.windowAll(TumblingEventTimeWindows.of(org.apache.flink.streaming.api.windowing.time.Time.seconds(10)))
                 .reduce(new ReduceFunction<CartAddUuBean>() {
