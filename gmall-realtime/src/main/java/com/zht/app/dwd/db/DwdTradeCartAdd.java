@@ -26,7 +26,7 @@ public class DwdTradeCartAdd {
         tableEnv.getConfig().setIdleStateRetention(Duration.ofSeconds(5));
 
         //TODO 2.使用DDL方式读取Kafka topic_db 主题数据
-        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_cart_add_211027"));
+        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_cart_add"));
 
         //打印测试
         //Table table = tableEnv.sqlQuery("select * from topic_db");

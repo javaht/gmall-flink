@@ -84,10 +84,10 @@ public class DwdTradePayDetailSuc {
                 "    `coupon_use_id` string, " +
                 "    `coupon_create_time` string , " +
                 "    `dic_name` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("dwd_trade_order_detail", "dwd_trade_pay_detail_211027"));
+                ")" + MyKafkaUtil.getKafkaDDL("dwd_trade_order_detail", "dwd_trade_pay_detail"));
 
         // TODO 4. 读取支付表数据
-        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_pay_detail_211027"));
+        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_pay_detail"));
         Table paymentInfo = tableEnv.sqlQuery("select " +
                 "data['user_id'] user_id, " +
                 "data['order_id'] order_id, " +

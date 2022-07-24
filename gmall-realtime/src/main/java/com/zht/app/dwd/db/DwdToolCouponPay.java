@@ -45,7 +45,7 @@ public class DwdToolCouponPay {
                 "`type` string, " +
                 "`old` string, " +
                 "`ts` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_pay_211027"));
+                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_pay"));
 
         // TODO 4. 读取优惠券领用表数据，封装为流
         Table couponUsePay = tableEnv.sqlQuery("select " +

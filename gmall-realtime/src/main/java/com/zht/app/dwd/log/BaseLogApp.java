@@ -35,7 +35,7 @@ public class BaseLogApp {
 //        env.getCheckpointConfig().setCheckpointStorage("hdfs:xxx:8020//xxx/xx");
 
         //TODO 2.读取Kafka topic_log 主题的数据创建流
-        DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getKafkaConsumer("topic_log", "base_log_app_211027"));
+        DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getKafkaConsumer("topic_log", "base_log_app"));
 
         //TODO 3.将数据转换为JSON格式,并过滤掉非JSON格式的数据
         OutputTag<String> dirtyTag = new OutputTag<String>("Dirty") {

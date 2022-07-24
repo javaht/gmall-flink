@@ -33,7 +33,7 @@ public class DwdTrafficUniqueVisitorDetail {
 
         //TODO 2.读取 Kafka dwd_traffic_page_log 主题数据创建流
         String sourceTopic = "dwd_traffic_page_log";
-        String groupId = "dwd_traffic_unique_visitor_detail_211027";
+        String groupId = "dwd_traffic_unique_visitor_detail";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getKafkaConsumer(sourceTopic, groupId));
 
         //TODO 3.将每行数据转换为JSON对象

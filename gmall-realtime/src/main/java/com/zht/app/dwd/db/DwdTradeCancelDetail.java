@@ -64,7 +64,7 @@ public class DwdTradeCancelDetail {
                 "    `coupon_use_id` string, " +
                 "    `coupon_create_time` string , " +
                 "    `dic_name` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("dwd_trade_order_detail", "dwd_trade_order_cancel_211027"));
+                ")" + MyKafkaUtil.getKafkaDDL("dwd_trade_order_detail", "dwd_trade_order_cancel"));
 
         //TODO 3.过滤出取消订单数据
         Table filterTable = tableEnv.sqlQuery("" +

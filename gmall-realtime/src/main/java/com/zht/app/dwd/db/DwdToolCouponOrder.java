@@ -46,7 +46,7 @@ public class DwdToolCouponOrder {
                 "`type` string, " +
                 "`old` string, " +
                 "`ts` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_order_211027"));
+                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_order"));
 
         // TODO 4. 读取优惠券领用表数据，封装为流
         Table couponUseOrder = tableEnv.sqlQuery("select " +

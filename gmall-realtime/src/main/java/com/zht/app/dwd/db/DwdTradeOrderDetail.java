@@ -26,7 +26,7 @@ public class DwdTradeOrderDetail {
         tableEnv.getConfig().setIdleStateRetention(Duration.ofDays(3));
 
         //TODO 2.使用DDL方式读取 Kafka topic_db 主题的数据
-        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_order_detail_211027"));
+        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_order_detail"));
 
         //TODO 3.过滤出订单明细数据
         Table orderDetailTable = tableEnv.sqlQuery("" +

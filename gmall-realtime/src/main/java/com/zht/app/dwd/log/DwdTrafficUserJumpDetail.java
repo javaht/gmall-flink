@@ -41,7 +41,7 @@ public class DwdTrafficUserJumpDetail {
 
         //TODO 2.读取 Kafka dwd_traffic_page_log 主题数据创建流
         String sourceTopic = "dwd_traffic_page_log";
-        String groupId = "dwd_traffic_user_jump_detail_211027";
+        String groupId = "dwd_traffic_user_jump_detail";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getKafkaConsumer(sourceTopic, groupId));
 
         //TODO 3.将数据转换为JSON对象

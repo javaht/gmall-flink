@@ -38,7 +38,7 @@ public class DwdToolCouponGet {
                 "`data` map<string, string>, " +
                 "`type` string, " +
                 "`ts` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_get_211027"));
+                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_get"));
 
         // TODO 4. 读取优惠券领用数据，封装为表
         Table resultTable = tableEnv.sqlQuery("select " +

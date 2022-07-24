@@ -58,6 +58,7 @@ public class DwsTrafficPageViewWindow {
         DataStreamSource<String> pageStringDs = env.addSource(MyKafkaUtil.getKafkaConsumer(topic, groupid));
 
         SingleOutputStreamOperator<JSONObject> jsonObjDs = pageStringDs.map(JSON::parseObject);
+
         //过滤出我们需要的数据
         SingleOutputStreamOperator<JSONObject> homeAndDetailPageDs = jsonObjDs.filter(new FilterFunction<JSONObject>() {
             @Override
@@ -122,7 +123,7 @@ public class DwsTrafficPageViewWindow {
                     }
                 } else {
                     String detailLastDt = detailLastVisitDt.value();
-                    if (detailLastDt == null || !detailLastDt.equals(curDt)) { //当前第一次访问
+                    if (detailLastDt == null || !detailLastDt.equals(curDt)) { //
                         detailUvCt = 1L;
                         detailLastVisitDt.update(curDt);
                     }

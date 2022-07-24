@@ -39,7 +39,7 @@ public class DwdInteractionFavorAdd {
                 "`data` map<string, string>, " +
                 "`old` map<string, string>, " +
                 "`ts` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_interaction_favor_add_211027"));
+                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_interaction_favor_add"));
 
         // TODO 4. 读取收藏表数据
         Table favorInfo = tableEnv.sqlQuery("select " +

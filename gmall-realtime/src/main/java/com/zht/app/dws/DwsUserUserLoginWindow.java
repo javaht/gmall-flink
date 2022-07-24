@@ -51,7 +51,6 @@ public class DwsUserUserLoginWindow {
         String topic = "dwd_traffic_page_log";
         String groupId = "dws_user_user_login_window"; //ctrl+shift+U
         DataStreamSource<String> kafkaDs = env.addSource(MyKafkaUtil.getKafkaConsumer(topic, groupId));
-
         //TODO 这里将数据转换为JSON  并且过滤出我们需要的数据
         SingleOutputStreamOperator<JSONObject> filterDs = kafkaDs.process(new ProcessFunction<String, JSONObject>() {
             @Override
@@ -77,6 +76,7 @@ public class DwsUserUserLoginWindow {
         //TODO  按照Uid分组
         KeyedStream<JSONObject, String> keyedDs = watermarkDs.keyBy(json -> json.getJSONObject("common").getString("uid"));
 
+
         SingleOutputStreamOperator<UserLoginBean> uvDs = keyedDs.process(new KeyedProcessFunction<String, JSONObject, UserLoginBean>() {
             private ValueState<String> lastVisitDt;
 
@@ -89,7 +89,8 @@ public class DwsUserUserLoginWindow {
             @Override
             public void processElement(JSONObject value, KeyedProcessFunction<String, JSONObject, UserLoginBean>.Context ctx, Collector<UserLoginBean> out) throws Exception {
                 String lastDt = lastVisitDt.value();//上一次保存的日期
-                String curDt = DateFormatUtil.toDate(value.getLong("ts"));
+                Long ts = value.getLong("ts");
+                String curDt = DateFormatUtil.toDate(ts);
                 long uuCt = 0L; //定义独立用户
                 long backCt = 0L; //定义回流用户
                 if (lastDt == null) { //表示为新用户
@@ -101,16 +102,16 @@ public class DwsUserUserLoginWindow {
                         uuCt = 1L;
                         lastVisitDt.update(curDt);
                         //两个日期相差>7天 就是回流用户
-                        long days = (DateFormatUtil.toTs(curDt) - DateFormatUtil.toTs(lastDt)) / (1000 * 60 * 60 * 24);
+                        long days = (ts- DateFormatUtil.toTs(lastDt)) / (1000L * 60 * 60 * 24);
                         if (days >= 8L) {
                             backCt = 1L;
-                            lastVisitDt.update(curDt);
+                            //lastVisitDt.update(curDt);
                         }
 
                     }
                 }
                 //如果当日独立用户为1 则需要写出
-                if (uuCt == 1L && backCt == 1L) {
+                if (uuCt == 1L ) {
 
                     out.collect(new UserLoginBean("",
                             ""
@@ -121,6 +122,7 @@ public class DwsUserUserLoginWindow {
                 }
             }
         });
+
 
         //开窗聚合
         SingleOutputStreamOperator<UserLoginBean> resultDs = uvDs.windowAll(TumblingEventTimeWindows.of(Time.seconds(10)))
