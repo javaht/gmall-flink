@@ -1,9 +1,6 @@
 package com.zht.app.dws;
-
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.zht.app.func.MyClickHouseUtil;
-import com.zht.bean.CartAddUuBean;
 import com.zht.bean.TradeOrderBean;
 import com.zht.utils.DateFormatUtil;
 import com.zht.utils.MyKafkaUtil;
@@ -13,7 +10,6 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
-import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
@@ -64,8 +60,6 @@ public class DwsTradeOrderWindow {
         });
         KeyedStream<JSONObject, String> Keyedstream = jsonObj.keyBy(line -> line.getString("order_detail_id"));
 
-
-
         //这里实现只要最新的数据
         SingleOutputStreamOperator<JSONObject> orderDetailJsonObjDs = Keyedstream.process(new KeyedProcessFunction<String, JSONObject, JSONObject>() {
             private ValueState<JSONObject> orderDetailState;
@@ -104,6 +98,8 @@ public class DwsTradeOrderWindow {
             }
         });
 
+        orderDetailJsonObjDs.print("orderDetailJsonObjDs>>>>>>>>>>>>>>");
+
         SingleOutputStreamOperator<JSONObject> watermarkDs = orderDetailJsonObjDs.assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2))
                 .withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
                     @Override
@@ -112,7 +108,7 @@ public class DwsTradeOrderWindow {
                         return DateFormatUtil.toTs(create_time,true);
                     }
                 }));
-
+        watermarkDs.print("watermarkDs>>>>>>>>>>>>>>>>");
         KeyedStream<JSONObject, String> keyedByUidStream = watermarkDs.keyBy(line -> line.getString("user_id"));
 
         SingleOutputStreamOperator<TradeOrderBean> tradeOrderDs = keyedByUidStream.flatMap(new RichFlatMapFunction<JSONObject, TradeOrderBean>() {
@@ -165,6 +161,7 @@ public class DwsTradeOrderWindow {
                 ));
             }
         });
+        tradeOrderDs.print("tradeOrderDs>>>>>>>>>");
         SingleOutputStreamOperator<TradeOrderBean> resultDs = tradeOrderDs.windowAll(TumblingEventTimeWindows.of(Time.seconds(10)))
                 .reduce(new ReduceFunction<TradeOrderBean>() {
                     @Override
@@ -189,7 +186,7 @@ public class DwsTradeOrderWindow {
                     }
                 });
 
-
+        resultDs.print(">>>>>>>>>>>>>>>>>");
         resultDs.addSink(MyClickHouseUtil.getClickHouseSink("INSERT INTO dws_trade_order_window  values(?,?,?,?,?,?,?,?)"));
         env.execute("DwsTradeOrderWindow");
     }
