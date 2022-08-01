@@ -11,8 +11,21 @@ import java.util.List;
 
 public class DimUtil {
 
+
     public static JSONObject getDimInfo(Connection connection, String tableName, String id) throws Exception {
 
+        //1.查询Redis
+        Jedis jedis = JedisUtil.getJedis();
+        String redisKey = "DIM:" + tableName + ":" + id;
+        String dimInfoStr = jedis.get(redisKey);
+        if (dimInfoStr != null) {
+            //重置数据的过期时间
+            jedis.expire(redisKey, 24 * 60 * 60);
+            //归还连接
+            jedis.close();
+            //返回结果
+            return JSON.parseObject(dimInfoStr);
+        }
 
         //拼接SQL
         String querySql = "select * from " + GmallConfig.HBASE_SCHEMA + "." + tableName + " where id ='" + id + "'";
@@ -22,6 +35,10 @@ public class DimUtil {
         List<JSONObject> list = JdbcUtil.queryList(connection, querySql, JSONObject.class, false);
         JSONObject dimInfo = list.get(0);
 
+        //将数据写入Redis
+        jedis.set(redisKey, dimInfo.toJSONString());
+        jedis.expire(redisKey, 24 * 60 * 60);
+        jedis.close();
 
         //返回结果数据
         return dimInfo;
