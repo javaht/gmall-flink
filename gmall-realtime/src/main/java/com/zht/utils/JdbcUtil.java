@@ -39,7 +39,7 @@ public class JdbcUtil {
 
                 //判断是否需要转换列名信息
                 if (underScoreToCamel) {
-                    columnName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, columnName.toLowerCase());
+                    columnName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, columnName.toLowerCase());//转换大小写
                 }
 
                 //给T对象赋值
@@ -62,8 +62,7 @@ public class JdbcUtil {
 
         Connection connection = DriverManager.getConnection(GmallConfig.PHOENIX_SERVER);
 
-        System.out.println(queryList(connection,
-                "select count(*) ct from GMALL211027_REALTIME.DIM_BASE_TRADEMARK", JSONObject.class, true));
+        System.out.println(queryList(connection, "select count(*) ct from GMALL2022_REALTIME.DIM_ACTIVITY_INFO", JSONObject.class, true));
 
         connection.close();
     }

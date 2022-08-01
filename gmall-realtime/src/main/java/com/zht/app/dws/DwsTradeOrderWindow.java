@@ -130,16 +130,14 @@ public class DwsTradeOrderWindow {
                 String curDt = value.getString("order_create_time").split(" ")[0];
 
                 if (lastOrder == null) {
-                    orderUniqueUserCount = 1;
-                    orderNewUserCount = 1;
+                    orderUniqueUserCount = 1L;
+                    orderNewUserCount = 1L;
                     lastorderDt.update(curDt);
-                } else {
-
-                    if (!lastorderDt.equals(curDt)) {
+                } else if (!lastorderDt.equals(curDt)) {
                         orderUniqueUserCount = 1L;
                         lastorderDt.update(curDt);
                     }
-                }
+
                 Double activityReduceAmount = value.getDouble("activity_reduce_amount");
                 Double couponReduceAmount = value.getDouble("coupon_reduce_amount");
                 if (activityReduceAmount == null) {
