@@ -54,7 +54,7 @@ public class DwsTradeCartAddUuWindow {
 
         //TODO 2.读取 Kafka DWD层 加购事实表
         String topic = "dwd_trade_cart_add";
-        String groupId = "dws_trade_cart_add_uu_window";
+        String groupId = "dws_trade_cart_add_uu_window_211126";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.将数据转换为JSON对象

@@ -20,7 +20,7 @@ public class SplitFunction extends TableFunction<Row> {
     public void eval(String keyword)  {
         List<String> keyList = null;
         try {
-            keyList = KeywordUtil.splitKeyWord(keyword);
+            keyList = KeywordUtil.splitKeyword(keyword);
             for (String word : keyList) {
                 collect(Row.of(word));
             }

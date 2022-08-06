@@ -1,3 +1,4 @@
+
 package com.zht.utils;
 
 import com.alibaba.druid.pool.DruidDataSource;
@@ -11,6 +12,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+
 /**
  * 当前工具类可以适用于任何JDBC方式访问的数据库中的任何查询语句
  * 单行单列：select count(*) from t;
@@ -21,6 +23,7 @@ import java.util.List;
  * List<JSON>
  * List<Map>
  */
+
 public class JdbcUtil {
 
     public static <T> List<T> queryList(Connection connection, String sql, Class<T> clz, boolean underScoreToCamel) throws SQLException, IllegalAccessException, InstantiationException, InvocationTargetException {
@@ -90,3 +93,4 @@ public class JdbcUtil {
     }
 
 }
+

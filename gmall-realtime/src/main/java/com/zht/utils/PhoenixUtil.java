@@ -1,8 +1,9 @@
+
 package com.zht.utils;
 
 import com.alibaba.druid.pool.DruidPooledConnection;
 import com.alibaba.fastjson.JSONObject;
-import com.atguigu.common.GmallConfig;
+import com.zht.common.GmallConfig;
 import org.apache.commons.lang3.StringUtils;
 
 import java.sql.PreparedStatement;
@@ -12,11 +13,13 @@ import java.util.Set;
 
 public class PhoenixUtil {
 
-    /**
+
+/**
      * @param connection Phoenix连接
      * @param sinkTable  表名   tn
      * @param data       数据   {"id":"1001","name":"zhangsan","sex":"male"}
      */
+
     public static void upsertValues(DruidPooledConnection connection, String sinkTable, JSONObject data) throws SQLException {
 
         //1.拼接SQL语句:upsert into db.tn(id,name,sex) values('1001','zhangsan','male')
@@ -39,3 +42,4 @@ public class PhoenixUtil {
 
     }
 }
+

@@ -1,7 +1,5 @@
 package com.zht.app.dwd;
 
-import com.atguigu.utils.MyKafkaUtil;
-import com.atguigu.utils.MysqlUtil;
 import com.zht.utils.MyKafkaUtil;
 import com.zht.utils.MysqlUtil;
 import org.apache.flink.configuration.Configuration;

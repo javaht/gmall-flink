@@ -1,10 +1,11 @@
+
 package com.zht.utils;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.pool.DruidPooledConnection;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.atguigu.common.GmallConfig;
+import com.zht.common.GmallConfig;
 import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.InvocationTargetException;

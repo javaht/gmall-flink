@@ -1,6 +1,5 @@
 package com.zht.app.dwd;
 
-import com.atguigu.utils.MyKafkaUtil;
 import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
