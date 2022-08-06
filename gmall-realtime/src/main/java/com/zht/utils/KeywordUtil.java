@@ -1,9 +1,5 @@
 package com.zht.utils;
-/*
- * @Author root
- * @Data  2022/7/18 13:40
- * @Description
- * */
+
 import org.wltea.analyzer.core.IKSegmenter;
 import org.wltea.analyzer.core.Lexeme;
 
@@ -13,27 +9,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class KeywordUtil {
-    public static List<String> splitKeyWord(String keyword) throws IOException {
-      //创建集合用于存放结果
-        ArrayList<String> result = new ArrayList<>();
-        StringReader reader = new StringReader(keyword);
-        //创建分词器对象
-        IKSegmenter ikSegmenter = new IKSegmenter(reader,false);
-        //提取分词
 
+    public static List<String> splitKeyword(String keyword) throws IOException {
+
+        //创建集合用于存放切分后的数据
+        ArrayList<String> list = new ArrayList<>();
+
+        //创建IK分词对象  ik_smart  ik_max_word
+        StringReader reader = new StringReader(keyword);
+        IKSegmenter ikSegmenter = new IKSegmenter(reader, false);
+
+        //循环取出切分好的词
         Lexeme next = ikSegmenter.next();
-        while (next!=null){
+
+        while (next != null) {
             String word = next.getLexemeText();
-            result.add(word);
+            list.add(word);
 
             next = ikSegmenter.next();
         }
-        return  result;
+
+        //最终返回集合
+        return list;
     }
 
-//    public static void main(String[] args) throws IOException {
-//        List<String> list = splitKeyWord("这是一个测试的程序");
-//        System.out.println(list);
-//    }
+    public static void main(String[] args) throws IOException {
+        System.out.println(splitKeyword("尚硅谷大数据项目之Flink实时数仓"));
+    }
 
 }

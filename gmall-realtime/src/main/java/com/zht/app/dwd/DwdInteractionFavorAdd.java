@@ -1,18 +1,19 @@
-package com.zht.app.dwd.db;
+package com.zht.app.dwd;
 
+import com.atguigu.utils.MyKafkaUtil;
 import com.zht.utils.MyKafkaUtil;
-import com.zht.utils.MysqlUtil;;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
-public class DwdToolCouponGet {
-
+//数据流：Web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkApp -> Kafka(DWD)
+//程  序：Mock  ->  Mysql  ->  Maxwell -> Kafka(ZK)  ->  DwdInteractionFavorAdd -> Kafka(ZK)
+public class DwdInteractionFavorAdd {
     public static void main(String[] args) throws Exception {
 
         // TODO 1. 环境准备
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(4);
+        env.setParallelism(1);
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
         // TODO 2. 状态后端设置
@@ -32,42 +33,40 @@ public class DwdToolCouponGet {
 //        System.setProperty("HADOOP_USER_NAME", "atguigu");
 
         // TODO 3. 从 Kafka 读取业务数据，封装为 Flink SQL 表
-        tableEnv.executeSql("create table `topic_db`( " +
+        tableEnv.executeSql("create table topic_db(" +
                 "`database` string, " +
                 "`table` string, " +
-                "`data` map<string, string>, " +
                 "`type` string, " +
+                "`data` map<string, string>, " +
                 "`ts` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_tool_coupon_get"));
+                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_interaction_favor_add"));
 
-        // TODO 4. 读取优惠券领用数据，封装为表
-        Table resultTable = tableEnv.sqlQuery("select " +
-                "data['id'], " +
-                "data['coupon_id'], " +
-                "data['user_id'], " +
-                "date_format(data['get_time'],'yyyy-MM-dd') date_id, " +
-                "data['get_time'], " +
+        // TODO 4. 读取收藏表数据
+        Table favorInfo = tableEnv.sqlQuery("select " +
+                "data['id'] id, " +
+                "data['user_id'] user_id, " +
+                "data['sku_id'] sku_id, " +
+                "date_format(data['create_time'],'yyyy-MM-dd') date_id, " +
+                "data['create_time'] create_time, " +
                 "ts " +
                 "from topic_db " +
-                "where `table` = 'coupon_use' " +
-                "and `type` = 'insert' ");
-        tableEnv.createTemporaryView("result_table", resultTable);
+                "where `table` = 'favor_info' " +
+                "and (`type` = 'insert' or (`type` = 'update' and data['is_cancel'] = '0'))" +
+                "");
+        tableEnv.createTemporaryView("favor_info", favorInfo);
 
-        // TODO 5. 建立 Upsert-Kafka dwd_tool_coupon_get 表
-        tableEnv.executeSql("create table dwd_tool_coupon_get ( " +
+        // TODO 5. 创建 Kafka-Connector dwd_interaction_favor_add 表
+        tableEnv.executeSql("create table dwd_interaction_favor_add ( " +
                 "id string, " +
-                "coupon_id string, " +
                 "user_id string, " +
+                "sku_id string, " +
                 "date_id string, " +
-                "get_time string, " +
-                "ts string, " +
-                "primary key(id) not enforced " +
-                ")" + MyKafkaUtil.getUpsertKafkaDDL("dwd_tool_coupon_get"));
+                "create_time string, " +
+                "ts string " +
+                ")" + MyKafkaUtil.getKafkaSinkDDL("dwd_interaction_favor_add"));
 
-        // TODO 6. 将数据写入 Upsert-Kafka 表
-        tableEnv.executeSql("insert into dwd_tool_coupon_get select * from result_table")
-                .print();
-
-        env.execute();
+        // TODO 6. 将数据写入 Kafka-Connector 表
+        tableEnv.executeSql("" +
+                "insert into dwd_interaction_favor_add select * from favor_info");
     }
 }

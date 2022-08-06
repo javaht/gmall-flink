@@ -1,6 +1,8 @@
 package com.zht.utils;
 
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -12,7 +14,6 @@ public class DateFormatUtil {
     private static final DateTimeFormatter dtfFull = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static Long toTs(String dtStr, boolean isFull) {
-
         LocalDateTime localDateTime = null;
         if (!isFull) {
             dtStr = dtStr + " 00:00:00";
@@ -39,6 +40,11 @@ public class DateFormatUtil {
     }
 
     public static void main(String[] args) {
-        System.out.println(toYmdHms(1650702276000L));
+        System.out.println(toYmdHms(System.currentTimeMillis()));
+
+//        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+//        long time = sdf.parse("").getTime();
+//        String format = sdf.format(156456465L);
+
     }
 }

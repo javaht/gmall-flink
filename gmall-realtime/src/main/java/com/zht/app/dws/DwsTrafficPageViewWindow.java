@@ -134,7 +134,7 @@ public class DwsTrafficPageViewWindow {
                     out.collect(new TrafficHomeDetailPageViewBean("", "",
                             homeUvCt,
                             detailUvCt,
-                            System.currentTimeMillis()));
+                            System.currentTimeMillis ()));
                 }
             }
         });

@@ -1,4 +1,4 @@
-package com.zht.app.dwd.db;
+package com.zht.app.dwd;
 
 import com.zht.utils.MyKafkaUtil;
 import com.zht.utils.MysqlUtil;
@@ -8,30 +8,38 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
 import java.time.Duration;
 
-public class DwdTradeOrderDetail {
+//数据流：Web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkApp -> Kafka(DWD)
+//程  序：Mock  ->  Mysql  ->  Maxwell -> Kafka(ZK)  ->  DwdTradeOrderPreProcess -> Kafka(ZK)
+public class DwdTradeOrderPreProcess {
 
     public static void main(String[] args) throws Exception {
 
         //TODO 1.获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
+        env.setParallelism(1); //生产环境中设置为Kafka主题的分区数
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
+        //1.1 开启CheckPoint
+        //env.enableCheckpointing(5 * 60000L, CheckpointingMode.EXACTLY_ONCE);
+        //env.getCheckpointConfig().setCheckpointTimeout(10 * 60000L);
+        //env.getCheckpointConfig().setMaxConcurrentCheckpoints(2);
+        //env.setRestartStrategy(RestartStrategies.fixedDelayRestart(3, 5000L));
+
+        //1.2 设置状态后端
         //env.setStateBackend(new HashMapStateBackend());
-        //env.enableCheckpointing(5000L);
-        //env.getCheckpointConfig().setCheckpointTimeout(10000L);
-        //env.getCheckpointConfig().setCheckpointStorage("hdfs:xxx:8020//xxx/xx");
+        //env.getCheckpointConfig().setCheckpointStorage("hdfs://hadoop102:8020/ck");
+        //System.setProperty("HADOOP_USER_NAME", "atguigu");
 
-        //设置状态存储时间
-        tableEnv.getConfig().setIdleStateRetention(Duration.ofDays(3));
+        //1.3 设置状态的TTL  生产环境设置为最大乱序程度
+        tableEnv.getConfig().setIdleStateRetention(Duration.ofSeconds(5));
 
-        //TODO 2.使用DDL方式读取 Kafka topic_db 主题的数据
-        tableEnv.executeSql(MyKafkaUtil.getTopicDbDDL("dwd_trade_order_detail"));
+        //TODO 2.创建 topic_db 表
+        tableEnv.executeSql(MyKafkaUtil.getTopicDb("order_pre_process"));
 
         //TODO 3.过滤出订单明细数据
         Table orderDetailTable = tableEnv.sqlQuery("" +
                 "select " +
-                "    data['id'] order_detail_id, " +
+                "    data['id'] id, " +
                 "    data['order_id'] order_id, " +
                 "    data['sku_id'] sku_id, " +
                 "    data['sku_name'] sku_name, " +
@@ -40,20 +48,18 @@ public class DwdTradeOrderDetail {
                 "    data['create_time'] create_time, " +
                 "    data['source_type'] source_type, " +
                 "    data['source_id'] source_id, " +
-                "    cast(cast(data['sku_num'] as decimal(16,2)) * cast(data['order_price'] as decimal(16,2)) as String) split_original_amount, " +
                 "    data['split_total_amount'] split_total_amount, " +
                 "    data['split_activity_amount'] split_activity_amount, " +
                 "    data['split_coupon_amount'] split_coupon_amount, " +
-                "    pt " +
+                "    pt  " +
                 "from topic_db " +
-                "where `database`='gmall' " +
-                "and `table`='order_detail' " +
-                "and `type`='insert'");
-        tableEnv.createTemporaryView("order_detail", orderDetailTable);
+                "where `database` = 'gmall' " +
+                "and `table` = 'order_detail' " +
+                "and `type` = 'insert'");
+        tableEnv.createTemporaryView("order_detail_table", orderDetailTable);
 
-        //打印测试
-        //Table table = tableEnv.sqlQuery("select * from order_detail");
-        //tableEnv.toAppendStream(table, Row.class).print(">>>>>>>>>");
+        //转换为流并打印测试
+        //tableEnv.toAppendStream(orderDetailTable, Row.class).print(">>>>");
 
         //TODO 4.过滤出订单数据
         Table orderInfoTable = tableEnv.sqlQuery("" +
@@ -65,8 +71,11 @@ public class DwdTradeOrderDetail {
                 "    data['order_status'] order_status, " +
                 "    data['user_id'] user_id, " +
                 "    data['payment_way'] payment_way, " +
+                "    data['delivery_address'] delivery_address, " +
+                "    data['order_comment'] order_comment, " +
                 "    data['out_trade_no'] out_trade_no, " +
                 "    data['trade_body'] trade_body, " +
+                "    data['create_time'] create_time, " +
                 "    data['operate_time'] operate_time, " +
                 "    data['expire_time'] expire_time, " +
                 "    data['process_status'] process_status, " +
@@ -78,19 +87,19 @@ public class DwdTradeOrderDetail {
                 "    data['original_total_amount'] original_total_amount, " +
                 "    data['feight_fee'] feight_fee, " +
                 "    data['feight_fee_reduce'] feight_fee_reduce, " +
+                "    data['refundable_time'] refundable_time, " +
                 "    `type`, " +
                 "    `old` " +
                 "from topic_db " +
-                "where `database`='gmall' " +
-                "and `table`='order_info' " +
-                "and (`type`='insert' or `type`='update')");
-        tableEnv.createTemporaryView("order_info", orderInfoTable);
+                "where `database` = 'gmall' " +
+                "and `table` = 'order_info' " +
+                "and (`type` = 'insert' or `type` = 'update')");
+        tableEnv.createTemporaryView("order_info_table", orderInfoTable);
 
-        //打印测试
-        //Table table = tableEnv.sqlQuery("select * from order_info");
-        //tableEnv.toAppendStream(table, Row.class).print(">>>>>>>>>");
+        //转换为流并打印测试
+        //tableEnv.toAppendStream(orderInfoTable, Row.class).print(">>>>");
 
-        //TODO 5.过滤出订单明细活动数据
+        //TODO 5.过滤出订单明细活动关联数据
         Table orderActivityTable = tableEnv.sqlQuery("" +
                 "select " +
                 "    data['id'] id, " +
@@ -101,16 +110,15 @@ public class DwdTradeOrderDetail {
                 "    data['sku_id'] sku_id, " +
                 "    data['create_time'] create_time " +
                 "from topic_db " +
-                "where `database`='gmall' " +
-                "and `table`='order_detail_activity' " +
-                "and `type`='insert'");
-        tableEnv.createTemporaryView("order_activity", orderActivityTable);
+                "where `database` = 'gmall' " +
+                "and `table` = 'order_detail_activity' " +
+                "and `type` = 'insert'");
+        tableEnv.createTemporaryView("order_activity_table", orderActivityTable);
 
-        //打印测试
-        //Table table = tableEnv.sqlQuery("select * from order_activity");
-        //tableEnv.toAppendStream(table, Row.class).print(">>>>>>>>>");
+        //转换为流并打印测试
+        //tableEnv.toAppendStream(orderActivityTable, Row.class).print(">>>>");
 
-        //TODO 6.过滤出订单明细购物券数据
+        //TODO 6.过滤出订单明细购物券关联数据
         Table orderCouponTable = tableEnv.sqlQuery("" +
                 "select " +
                 "    data['id'] id, " +
@@ -121,41 +129,41 @@ public class DwdTradeOrderDetail {
                 "    data['sku_id'] sku_id, " +
                 "    data['create_time'] create_time " +
                 "from topic_db " +
-                "where `database`='gmall' " +
-                "and `table`='order_detail_coupon' " +
-                "and `type`='insert'");
-        tableEnv.createTemporaryView("order_coupon", orderCouponTable);
+                "where `database` = 'gmall' " +
+                "and `table` = 'order_detail_coupon' " +
+                "and `type` = 'insert'");
+        tableEnv.createTemporaryView("order_coupon_table", orderCouponTable);
 
-        //打印测试
-        //Table table = tableEnv.sqlQuery("select * from order_coupon");
-        //tableEnv.toAppendStream(table, Row.class).print(">>>>>>>>>");
+        //转换为流并打印测试
+        //tableEnv.toAppendStream(orderCouponTable, Row.class).print(">>>>");
 
-        //TODO 7.构建MySQL-lookup表  base_dic
+        //TODO 7.创建 base_dic LookUp表
         tableEnv.executeSql(MysqlUtil.getBaseDicLookUpDDL());
 
         //TODO 8.关联5张表
         Table resultTable = tableEnv.sqlQuery("" +
                 "select " +
-                "    od.order_detail_id, " +
+                "    od.id, " +
                 "    od.order_id, " +
                 "    od.sku_id, " +
                 "    od.sku_name, " +
                 "    od.order_price, " +
                 "    od.sku_num, " +
-                "    od.create_time order_create_time, " +
-                "    od.source_type, " +
+                "    od.create_time, " +
+                "    od.source_type source_type_id, " +
+                "    dic.dic_name source_type_name, " +
                 "    od.source_id, " +
-                "    od.split_original_amount, " +
                 "    od.split_total_amount, " +
                 "    od.split_activity_amount, " +
                 "    od.split_coupon_amount, " +
-                "    od.pt, " +
                 "    oi.consignee, " +
                 "    oi.consignee_tel, " +
                 "    oi.total_amount, " +
                 "    oi.order_status, " +
                 "    oi.user_id, " +
                 "    oi.payment_way, " +
+                "    oi.delivery_address, " +
+                "    oi.order_comment, " +
                 "    oi.out_trade_no, " +
                 "    oi.trade_body, " +
                 "    oi.operate_time, " +
@@ -169,54 +177,54 @@ public class DwdTradeOrderDetail {
                 "    oi.original_total_amount, " +
                 "    oi.feight_fee, " +
                 "    oi.feight_fee_reduce, " +
-                "    oi.`type`, " +
-                "    oi.`old`, " +
+                "    oi.refundable_time, " +
+                "    oa.id order_detail_activity_id, " +
                 "    oa.activity_id, " +
                 "    oa.activity_rule_id, " +
-                "    oa.create_time activity_create_time, " +
+                "    oc.id order_detail_coupon_id, " +
                 "    oc.coupon_id, " +
                 "    oc.coupon_use_id, " +
-                "    oc.create_time coupon_create_time, " +
-                "    dic.dic_name, " +
-                "    current_row_timestamp() ts " +
-                "from order_detail od " +
-                "join order_info oi " +
+                "    oi.`type`, " +
+                "    oi.`old`, " +
+                "    current_row_timestamp() row_op_ts "+
+                "from order_detail_table od " +
+                "join order_info_table oi " +
                 "on od.order_id = oi.id " +
-                "left join order_activity oa " +
-                "on od.order_detail_id = oa.order_detail_id " +
-                "left join order_coupon oc " +
-                "on od.order_detail_id = oc.order_detail_id " +
+                "left join order_activity_table oa " +
+                "on od.id = oa.order_detail_id " +
+                "left join order_coupon_table oc " +
+                "on od.id = oc.order_detail_id " +
                 "join base_dic FOR SYSTEM_TIME AS OF od.pt as dic " +
                 "on od.source_type = dic.dic_code");
         tableEnv.createTemporaryView("result_table", resultTable);
 
-        //打印测试
-        //Table table = tableEnv.sqlQuery("select * from result_table");
-        //tableEnv.toChangelogStream(table).print(">>>>>>>>>");
+        //转换为流并打印测试
+        //tableEnv.toRetractStream(resultTable, Row.class).print(">>>>");
 
-        //TODO 9.创建Kafka upsert-kafka表
+        //TODO 9.创建 upsert-kafka 表
         tableEnv.executeSql("" +
-                "create table dwd_trade_order_detail_table( " +
-                "    `order_detail_id` string, " +
+                "create table dwd_order_pre( " +
+                "    `id` string, " +
                 "    `order_id` string, " +
                 "    `sku_id` string, " +
                 "    `sku_name` string, " +
                 "    `order_price` string, " +
                 "    `sku_num` string, " +
-                "    `order_create_time` string, " +
-                "    `source_type` string, " +
+                "    `create_time` string, " +
+                "    `source_type_id` string, " +
+                "    `source_type_name` string, " +
                 "    `source_id` string, " +
-                "    `split_original_amount` string, " +
                 "    `split_total_amount` string, " +
                 "    `split_activity_amount` string, " +
                 "    `split_coupon_amount` string, " +
-                "    `pt` TIMESTAMP_LTZ(3), " +
                 "    `consignee` string, " +
                 "    `consignee_tel` string, " +
                 "    `total_amount` string, " +
                 "    `order_status` string, " +
                 "    `user_id` string, " +
                 "    `payment_way` string, " +
+                "    `delivery_address` string, " +
+                "    `order_comment` string, " +
                 "    `out_trade_no` string, " +
                 "    `trade_body` string, " +
                 "    `operate_time` string, " +
@@ -230,24 +238,24 @@ public class DwdTradeOrderDetail {
                 "    `original_total_amount` string, " +
                 "    `feight_fee` string, " +
                 "    `feight_fee_reduce` string, " +
-                "    `type` string, " +
-                "    `old` map<string,string>, " +
+                "    `refundable_time` string, " +
+                "    `order_detail_activity_id` string, " +
                 "    `activity_id` string, " +
                 "    `activity_rule_id` string, " +
-                "    `activity_create_time` string , " +
+                "    `order_detail_coupon_id` string, " +
                 "    `coupon_id` string, " +
                 "    `coupon_use_id` string, " +
-                "    `coupon_create_time` string , " +
-                "    `dic_name` string, " +
-                "    `ts` TIMESTAMP_LTZ(3), " +
-                "    PRIMARY KEY (order_detail_id) NOT ENFORCED " +
-                ")" + MyKafkaUtil.getUpsertKafkaDDL("dwd_trade_order_detail"));
+                "    `type` string, " +
+                "    `old` map<string,string>, " +
+                "    row_op_ts TIMESTAMP_LTZ(3), "+
+                "    primary key(id) not enforced " +
+                ")" + MyKafkaUtil.getUpsertKafkaDDL("dwd_trade_order_pre_process"));
 
         //TODO 10.将数据写出
-        tableEnv.executeSql("insert into dwd_trade_order_detail_table select * from result_table").print();
+        tableEnv.executeSql("insert into dwd_order_pre select * from result_table");
 
         //TODO 11.启动任务
-        env.execute("DwdTradeOrderDetail");
+        //env.execute("DwdTradeOrderPreProcess");
 
     }
 

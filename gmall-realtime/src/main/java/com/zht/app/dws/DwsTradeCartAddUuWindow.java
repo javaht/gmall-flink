@@ -2,14 +2,13 @@ package com.zht.app.dws;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.zht.app.func.MyClickHouseUtil;
 import com.zht.bean.CartAddUuBean;
 import com.zht.utils.DateFormatUtil;
+import com.zht.utils.MyClickHouseUtil;
 import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.ReduceFunction;
-import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
@@ -23,75 +22,107 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.util.Collector;
-import org.fusesource.leveldbjni.All;
 
 import java.time.Duration;
 
+//数据流：Web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkApp -> Kafka(DWD) -> FlinkApp -> ClickHouse(DWS)
+//程  序：Mock  ->  Mysql  ->  Maxwell -> Kafka(ZK)  ->  DwdTradeCartAdd -> Kafka(ZK) -> DwdTradeCartAdd -> ClickHouse(ZK)
 public class DwsTradeCartAddUuWindow {
+
     public static void main(String[] args) throws Exception {
+
+        //TODO 1.获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
-        // TODO 2. 状态后端设置
+        // 1.1 状态后端设置
 //        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
 //        env.getCheckpointConfig().setCheckpointTimeout(60 * 1000L);
 //        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(3000L);
-//        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-//        env.setRestartStrategy(RestartStrategies.failureRateRestart(3, Time.days(1), Time.minutes(1)));
+//        env.getCheckpointConfig().enableExternalizedCheckpoints(
+//                CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION
+//        );
+//        env.setRestartStrategy(RestartStrategies.failureRateRestart(
+//                3, Time.days(1), Time.minutes(1)
+//        ));
 //        env.setStateBackend(new HashMapStateBackend());
-//        env.getCheckpointConfig().setCheckpointStorage("hdfs://hadoop102:8020/ck");
-//        System.setProperty("HADOOP_USER_NAME", "root");
+//        env.getCheckpointConfig().setCheckpointStorage(
+//                "hdfs://hadoop102:8020/ck"
+//        );
+//        System.setProperty("HADOOP_USER_NAME", "atguigu");
 
+        //TODO 2.读取 Kafka DWD层 加购事实表
         String topic = "dwd_trade_cart_add";
         String groupId = "dws_trade_cart_add_uu_window";
-        DataStreamSource<String> kafkaDs = env.addSource(MyKafkaUtil.getKafkaConsumer(topic, groupId));
+        DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
-        SingleOutputStreamOperator<JSONObject> jsonObj = kafkaDs.map(JSON::parseObject);
+        //TODO 3.将数据转换为JSON对象
+        SingleOutputStreamOperator<JSONObject> jsonObjDS = kafkaDS.map(JSON::parseObject);
 
-        SingleOutputStreamOperator<JSONObject> waterMarkDs = jsonObj.assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2))
-                .withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
-                    @Override
-                    public long extractTimestamp(JSONObject element, long recordTimestamp) {
+        //TODO 4.提取事件时间生成Watermark
+        SingleOutputStreamOperator<JSONObject> jsonObjWithWmDS = jsonObjDS.assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2)).withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
+            @Override
+            public long extractTimestamp(JSONObject element, long recordTimestamp) {
 
-                        String dateTime = element.getString("operate_time");
+                String operateTime = element.getString("operate_time");
 
-                        if(dateTime ==null){
-                            dateTime = element.getString("create_time");
-                        }
-                        return DateFormatUtil.toTs(dateTime, true);
-                    }
-                }));
-        KeyedStream<JSONObject, String> JsonObj = waterMarkDs.keyBy(json -> json.getString("user_id"));
+                if (operateTime != null) {
+                    return DateFormatUtil.toTs(operateTime, true);
+                } else {
+                    return DateFormatUtil.toTs(element.getString("create_time"), true);
+                }
+            }
+        }));
 
-        SingleOutputStreamOperator<CartAddUuBean> flatDs = JsonObj.flatMap(new RichFlatMapFunction<JSONObject, CartAddUuBean>() {
-            private ValueState<String> lastCartAddDt;
+        //TODO 5.按照user_id分组
+        KeyedStream<JSONObject, String> keyedStream = jsonObjWithWmDS.keyBy(json -> json.getString("user_id"));
+
+        //TODO 6.使用状态编程提取独立加购用户
+        SingleOutputStreamOperator<CartAddUuBean> cartAddDS = keyedStream.flatMap(new RichFlatMapFunction<JSONObject, CartAddUuBean>() {
+
+            private ValueState<String> lastCartAddState;
 
             @Override
             public void open(Configuration parameters) throws Exception {
-                ValueStateDescriptor<String> valueStateDescriptor = new ValueStateDescriptor<>("", String.class);
-                StateTtlConfig ttl = new StateTtlConfig.Builder(Time.days(1)).setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite).build();
-                valueStateDescriptor.enableTimeToLive(ttl);
-                lastCartAddDt = getRuntimeContext().getState(valueStateDescriptor);
+
+                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.days(1))
+                        .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
+                        .build();
+
+                ValueStateDescriptor<String> stateDescriptor = new ValueStateDescriptor<>("last-cart", String.class);
+                stateDescriptor.enableTimeToLive(ttlConfig);
+
+                lastCartAddState = getRuntimeContext().getState(stateDescriptor);
             }
 
             @Override
             public void flatMap(JSONObject value, Collector<CartAddUuBean> out) throws Exception {
-                String lastDt = lastCartAddDt.value();
-                String createTime = value.getString("create_time");
-                String curDt = createTime.split(" ")[0];
-                //如果状态数据为null或者和当前日期不是同一天 则保留数据  更新状态
+
+                //获取状态数据以及当前数据的日期
+                String lastDt = lastCartAddState.value();
+                String operateTime = value.getString("operate_time");
+                String curDt = null;
+                if (operateTime != null) {
+                    curDt = operateTime.split(" ")[0];
+                } else {
+                    String createTime = value.getString("create_time");
+                    curDt = createTime.split(" ")[0];
+                }
+
                 if (lastDt == null || !lastDt.equals(curDt)) {
-                    lastCartAddDt.update(curDt);
-                    out.collect(new CartAddUuBean("", "", 1L, 0L));
+                    lastCartAddState.update(curDt);
+                    out.collect(new CartAddUuBean(
+                            "",
+                            "",
+                            1L,
+                            null));
                 }
             }
         });
 
-
-        SingleOutputStreamOperator<CartAddUuBean> reduceDs = flatDs.windowAll(TumblingEventTimeWindows.of(org.apache.flink.streaming.api.windowing.time.Time.seconds(10)))
+        //TODO 7.开窗、聚合
+        SingleOutputStreamOperator<CartAddUuBean> resultDS = cartAddDS.windowAll(TumblingEventTimeWindows.of(org.apache.flink.streaming.api.windowing.time.Time.seconds(10)))
                 .reduce(new ReduceFunction<CartAddUuBean>() {
                     @Override
                     public CartAddUuBean reduce(CartAddUuBean value1, CartAddUuBean value2) throws Exception {
@@ -101,19 +132,22 @@ public class DwsTradeCartAddUuWindow {
                 }, new AllWindowFunction<CartAddUuBean, CartAddUuBean, TimeWindow>() {
                     @Override
                     public void apply(TimeWindow window, Iterable<CartAddUuBean> values, Collector<CartAddUuBean> out) throws Exception {
-                        CartAddUuBean cartAddUuBean = values.iterator().next();
-                        cartAddUuBean.setStt(DateFormatUtil.toYmdHms(window.getStart()));
-                        cartAddUuBean.setEdt(DateFormatUtil.toYmdHms(window.getEnd()));
+                        CartAddUuBean next = values.iterator().next();
 
-                        cartAddUuBean.setTs(System.currentTimeMillis());
+                        next.setEdt(DateFormatUtil.toYmdHms(window.getEnd()));
+                        next.setStt(DateFormatUtil.toYmdHms(window.getStart()));
+                        next.setTs(System.currentTimeMillis());
 
-                        out.collect(cartAddUuBean);
+                        out.collect(next);
                     }
                 });
 
-        reduceDs.print(">>>>>>>>>>>>");
-        reduceDs.addSink(MyClickHouseUtil.getClickHouseSink(" insert into dws_trade_cart_add_uu_window values(?,?,?,?)"));
-        env.execute("DwsTradeCartAddUuWindow");
+        //TODO 8.将数据写出到ClickHouse
+        resultDS.print(">>>>>>>>>>>");
+        resultDS.addSink(MyClickHouseUtil.getSinkFunction("insert into dws_trade_cart_add_uu_window values (?,?,?,?)"));
 
+        //TODO 9.启动任务
+        env.execute("DwsTradeCartAddUuWindow");
     }
+
 }

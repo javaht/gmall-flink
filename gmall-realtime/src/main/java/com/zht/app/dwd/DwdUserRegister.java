@@ -1,23 +1,22 @@
-package com.zht.app.dwd.db;
+package com.zht.app.dwd;
 
 import com.zht.utils.MyKafkaUtil;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.types.Row;
 
 import java.time.ZoneId;
 
+//数据流：Web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkApp -> Kafka(DWD)
+//程  序：Mock  ->  Mysql  ->  Maxwell -> Kafka(ZK)  ->  DwdUserRegister -> Kafka(ZK)
 public class DwdUserRegister {
-
     public static void main(String[] args) throws Exception {
 
         // TODO 1. 环境准备
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
-        //tableEnv.getConfig().setLocalTimeZone(ZoneId.of("GMT+8"));
+        tableEnv.getConfig().setLocalTimeZone(ZoneId.of("GMT+8"));
 
         // TODO 2. 启用状态后端
 //        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
@@ -47,33 +46,26 @@ public class DwdUserRegister {
                 "data['id'] user_id, " +
                 "data['create_time'] create_time, " +
                 "ts " +
-                "from topic_db where `table` = 'user_info' and `type` = 'insert' ");
+                "from topic_db " +
+                "where `table` = 'user_info' " +
+                "and `type` = 'insert' ");
         tableEnv.createTemporaryView("user_info", userInfo);
 
-        DataStream<Row> rowDataStream = tableEnv.toAppendStream(userInfo, Row.class);
-        rowDataStream.print("rowDataStream>>>>>>>>>>>>>");
-
-        // TODO 5. 创建 Upsert-Kafka dwd_user_register 表
+        // TODO 5. 创建 Kafka-Connector dwd_user_register 表
         tableEnv.executeSql("create table `dwd_user_register`( " +
                 "`user_id` string, " +
                 "`date_id` string, " +
                 "`create_time` string, " +
-                "`ts` string, " +
-                "primary key(`user_id`) not enforced " +
-                ")" + MyKafkaUtil.getUpsertKafkaDDL("dwd_user_register"));
+                "`ts` string " +
+                ")" + MyKafkaUtil.getKafkaSinkDDL("dwd_user_register"));
 
-        // TODO 6. 将输入写入 Upsert-Kafka 表
+        // TODO 6. 将输入写入 Kafka-Connector 表
         tableEnv.executeSql("insert into dwd_user_register " +
                 "select  " +
                 "user_id, " +
                 "date_format(create_time, 'yyyy-MM-dd') date_id, " +
                 "create_time, " +
                 "ts " +
-                "from user_info")
-                .print();
-
-        env.execute("DwdUserRegister");
-
+                "from user_info");
     }
 }
-

@@ -1,30 +1,28 @@
-package com.zht.app.dwd.db;
+package com.zht.app.dwd;
 
-import com.alibaba.fastjson.JSON;
-import com.zht.bean.OrderInfoRefundBean;
+import com.atguigu.utils.MyKafkaUtil;
+import com.atguigu.utils.MysqlUtil;
 import com.zht.utils.MyKafkaUtil;
 import com.zht.utils.MysqlUtil;
-import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.api.common.time.Time;
-import org.apache.flink.runtime.state.hashmap.HashMapStateBackend;
-import org.apache.flink.streaming.api.CheckpointingMode;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
-import org.apache.flink.streaming.api.environment.CheckpointConfig;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
-import java.util.Map;
-import java.util.Set;
-
+//数据流：Web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkApp -> Kafka(DWD)
+//程  序：Mock  ->  Mysql  ->  Maxwell -> Kafka(ZK)  ->  DwdTradeOrderRefund -> Kafka(ZK)
 public class DwdTradeOrderRefund {
     public static void main(String[] args) throws Exception {
 
         // TODO 1. 环境准备
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(4);
+        env.setParallelism(1);
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+
+        // 获取配置对象
+        Configuration configuration = tableEnv.getConfig().getConfiguration();
+        // 为表关联时状态中存储的数据设置过期时间
+        configuration.setString("table.exec.state.ttl", "5 s");
 
         // TODO 2. 状态后端设置
 //        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
@@ -48,10 +46,10 @@ public class DwdTradeOrderRefund {
                 "`table` string, " +
                 "`type` string, " +
                 "`data` map<string, string>, " +
-                "`old` string, " +
+                "`old` map<string, string>, " +
                 "`proc_time` as PROCTIME(), " +
                 "`ts` string " +
-                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "dwd_trade_order_refund"));
+                ")" + MyKafkaUtil.getKafkaDDL("topic_db", "order_refund"));
 
         // TODO 4. 读取退单表数据
         Table orderRefundInfo = tableEnv.sqlQuery("select " +
@@ -72,38 +70,23 @@ public class DwdTradeOrderRefund {
                 "and `type` = 'insert' ");
         tableEnv.createTemporaryView("order_refund_info", orderRefundInfo);
 
-        // TODO 5. 读取订单表数据并转化为流
-        Table orderInfo = tableEnv.sqlQuery("select " +
+        // TODO 5. 读取订单表数据，筛选退单数据
+        Table orderInfoRefund = tableEnv.sqlQuery("select " +
                 "data['id'] id, " +
                 "data['province_id'] province_id, " +
                 "`old` " +
                 "from topic_db " +
                 "where `table` = 'order_info' " +
                 "and `type` = 'update' " +
-                "and data['order_status']='1005'");
-        DataStream<OrderInfoRefundBean> orderInfoRefundDS = tableEnv.toAppendStream(orderInfo, OrderInfoRefundBean.class);
+                "and data['order_status']='1005' " +
+                "and `old`['order_status'] is not null");
 
-        // TODO 6. 过滤符合条件的订单表退单数据
-        SingleOutputStreamOperator<OrderInfoRefundBean> filteredDS = orderInfoRefundDS.filter(
-                orderInfoRefund -> {
-                    String old = orderInfoRefund.getOld();
-                    if (old != null) {
-                        Map oldMap = JSON.parseObject(old, Map.class);
-                        Set changeKeys = oldMap.keySet();
-                        return changeKeys.contains("order_status");
-                    }
-                    return false;
-                }
-        );
-
-        // TODO 7. 将订单表退单流转化为表
-        Table orderInfoRefund = tableEnv.fromDataStream(filteredDS);
         tableEnv.createTemporaryView("order_info_refund", orderInfoRefund);
 
-        // TODO 8. 建立 MySQL-LookUp 字典表
+        // TODO 6. 建立 MySQL-LookUp 字典表
         tableEnv.executeSql(MysqlUtil.getBaseDicLookUpDDL());
 
-        // TODO 9. 关联三张表获得退单宽表
+        // TODO 7. 关联三张表获得退单宽表
         Table resultTable = tableEnv.sqlQuery("select  " +
                 "ri.id, " +
                 "ri.user_id, " +
@@ -122,18 +105,18 @@ public class DwdTradeOrderRefund {
                 "ri.ts, " +
                 "current_row_timestamp() row_op_ts " +
                 "from order_refund_info ri " +
-                "left join  " +
+                "join  " +
                 "order_info_refund oi " +
                 "on ri.order_id = oi.id " +
-                "left join  " +
+                "join  " +
                 "base_dic for system_time as of ri.proc_time as type_dic " +
                 "on ri.refund_type = type_dic.dic_code " +
-                "left join " +
+                "join " +
                 "base_dic for system_time as of ri.proc_time as reason_dic " +
                 "on ri.refund_reason_type=reason_dic.dic_code");
         tableEnv.createTemporaryView("result_table", resultTable);
 
-        // TODO 10. 建立 Upsert-Kafka dwd_trade_order_refund 表
+        // TODO 8. 建立 Kafka-Connector dwd_trade_order_refund 表
         tableEnv.executeSql("create table dwd_trade_order_refund( " +
                 "id string, " +
                 "user_id string, " +
@@ -150,13 +133,11 @@ public class DwdTradeOrderRefund {
                 "refund_num string, " +
                 "refund_amount string, " +
                 "ts string, " +
-                "row_op_ts timestamp_ltz(3), " +
-                "primary key(id) not enforced " +
-                ")" + MyKafkaUtil.getUpsertKafkaDDL("dwd_trade_order_refund"));
+                "row_op_ts timestamp_ltz(3) " +
+                ")" + MyKafkaUtil.getKafkaSinkDDL("dwd_trade_order_refund"));
 
-        // TODO 11. 将关联结果写入 Upsert-Kafka 表
-        tableEnv.executeSql("insert into dwd_trade_order_refund select * from result_table");
-
-        env.execute();
+        // TODO 9. 将关联结果写入 Kafka-Connector 表
+        tableEnv.executeSql("" +
+                "insert into dwd_trade_order_refund select * from result_table");
     }
 }
