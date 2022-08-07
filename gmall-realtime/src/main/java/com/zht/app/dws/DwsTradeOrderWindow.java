@@ -8,10 +8,7 @@ import com.zht.utils.MyClickHouseUtil;
 import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.ReduceFunction;
-import org.apache.flink.api.common.functions.RichFilterFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.functions.*;
 import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
@@ -25,6 +22,7 @@ import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.OutputTag;
 
 import java.time.Duration;
 
@@ -54,8 +52,9 @@ public class DwsTradeOrderWindow {
 
         //TODO 2.读取Kafka DWD层下单主题数据创建流
         String topic = "dwd_trade_order_detail";
-        String groupId = "dws_trade_order_window_211126";
+        String groupId = "dws_trade_order_window";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
+
 
         //TODO 3.将每行数据转换为JSON对象
         SingleOutputStreamOperator<JSONObject> jsonObjDS = kafkaDS.flatMap(new FlatMapFunction<String, JSONObject>() {
@@ -80,10 +79,8 @@ public class DwsTradeOrderWindow {
 
             @Override
             public void open(Configuration parameters) throws Exception {
-
-                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.seconds(5))
-                        .setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite)
-                        .build();
+                //设置过期时间
+                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.seconds(5)).setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite).build();
                 ValueStateDescriptor<String> stateDescriptor = new ValueStateDescriptor<>("is-exists", String.class);
                 stateDescriptor.enableTimeToLive(ttlConfig);
 

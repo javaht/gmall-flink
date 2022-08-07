@@ -47,7 +47,11 @@ public class TradeTrademarkCategoryUserRefundBean {
     Long ts;
 
     public static void main(String[] args) {
-        TradeTrademarkCategoryUserRefundBean build = builder().build();
-        System.out.println(build);
+//        TradeTrademarkCategoryUserRefundBean build = builder().build();
+//        System.out.println(build);
+
+        TradeTrademarkCategoryUserRefundBean.builder().skuId("").userId("").build();
+
+
     }
 }

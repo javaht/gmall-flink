@@ -12,6 +12,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
@@ -59,7 +60,7 @@ public class DwsTradeUserSpuOrderWindow {
 
         //TODO 2.读取Kafka DWD层下单主题数据创建流
         String topic = "dwd_trade_order_detail";
-        String groupId = "dws_trade_user_spu_order_window_211126";
+        String groupId = "dws_trade_user_spu_order_window";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.将每行数据转换为JSON对象
@@ -86,12 +87,9 @@ public class DwsTradeUserSpuOrderWindow {
             @Override
             public void open(Configuration parameters) throws Exception {
 
-                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.seconds(5))
-                        .setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite)
-                        .build();
+                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.seconds(5)).setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite).build();
                 ValueStateDescriptor<String> stateDescriptor = new ValueStateDescriptor<>("is-exists", String.class);
                 stateDescriptor.enableTimeToLive(ttlConfig);
-
                 valueState = getRuntimeContext().getState(stateDescriptor);
             }
 
@@ -138,8 +136,7 @@ public class DwsTradeUserSpuOrderWindow {
 //                return null;
 //            }
 //        });
-        SingleOutputStreamOperator<TradeUserSpuOrderBean> tradeUserSpuWithSkuDS = AsyncDataStream.unorderedWait(
-                tradeUserSpuDS,
+        SingleOutputStreamOperator<TradeUserSpuOrderBean> tradeUserSpuWithSkuDS = AsyncDataStream.unorderedWait(tradeUserSpuDS,
                 new DimAsyncFunction<TradeUserSpuOrderBean>("DIM_SKU_INFO") {
                     @Override
                     public String getKey(TradeUserSpuOrderBean input) {
