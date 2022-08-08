@@ -16,7 +16,6 @@ import java.util.List;
 public class DimUtil {
 
     public static JSONObject getDimInfo(Connection connection, String tableName, String key) throws InvocationTargetException, SQLException, InstantiationException, IllegalAccessException {
-
         //先查询Redis
         Jedis jedis = JedisUtil.getJedis();
         String redisKey = "DIM:" + tableName + ":" + key;

@@ -39,6 +39,7 @@ public class JdbcUtil {
 
         //获取查询的元数据信息
         ResultSetMetaData metaData = resultSet.getMetaData();
+        //获取列的总数
         int columnCount = metaData.getColumnCount();
 
         //遍历结果集,将每行数据转换为T对象并加入集合   行遍历
@@ -80,7 +81,7 @@ public class JdbcUtil {
         DruidPooledConnection connection = dataSource.getConnection();
 
         List<JSONObject> jsonObjects = queryList(connection,
-                "select * ct from GMALL211027_REALTIME.DIM_BASE_TRADEMARK where id='1'",
+                "select * ct from GMALL.DIM_BASE_TRADEMARK where id='1'",
                 JSONObject.class,
                 true);
 
