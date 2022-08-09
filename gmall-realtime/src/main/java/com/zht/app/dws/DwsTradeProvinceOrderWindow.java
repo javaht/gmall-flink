@@ -58,7 +58,7 @@ public class DwsTradeProvinceOrderWindow {
 
         //TODO 2.读取Kafka DWD层下单主题数据创建流
         String topic = "dwd_trade_order_detail";
-        String groupId = "dws_trade_province_order_window_211126";
+        String groupId = "dws_trade_province_order_window";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.将每行数据转换为JSON对象
@@ -132,7 +132,6 @@ public class DwsTradeProvinceOrderWindow {
 
         //TODO 6.提取时间戳生成Watermark
         SingleOutputStreamOperator<TradeProvinceOrderWindow> tradeProvinceWithWmDS = provinceOrderDS.assignTimestampsAndWatermarks(WatermarkStrategy.<TradeProvinceOrderWindow>forBoundedOutOfOrderness(Duration.ofSeconds(2)).withTimestampAssigner(new SerializableTimestampAssigner<TradeProvinceOrderWindow>() {
-
             @Override
             public long extractTimestamp(TradeProvinceOrderWindow element, long recordTimestamp) {
                 return element.getTs();
