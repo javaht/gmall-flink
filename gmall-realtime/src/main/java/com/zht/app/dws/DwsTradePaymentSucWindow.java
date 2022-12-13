@@ -42,16 +42,10 @@ public class DwsTradePaymentSucWindow {
 //        env.enableCheckpointing(3000L, CheckpointingMode.EXACTLY_ONCE);
 //        env.getCheckpointConfig().setCheckpointTimeout(60 * 1000L);
 //        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(3000L);
-//        env.getCheckpointConfig().enableExternalizedCheckpoints(
-//                CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION
-//        );
-//        env.setRestartStrategy(RestartStrategies.failureRateRestart(
-//                3, Time.days(1), Time.minutes(1)
-//        ));
+//        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+//        env.getCheckpointConfig().setCheckpointStorage("hdfs://hadoop102:8020/ck");
+//        env.setRestartStrategy(RestartStrategies.failureRateRestart(3, Time.days(1), Time.minutes(1)));
 //        env.setStateBackend(new HashMapStateBackend());
-//        env.getCheckpointConfig().setCheckpointStorage(
-//                "hdfs://hadoop102:8020/ck"
-//        );
 //        System.setProperty("HADOOP_USER_NAME", "atguigu");
 
 

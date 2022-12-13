@@ -104,7 +104,8 @@ public class DwsTradeOrderWindow {
         });
 
         //TODO 6.提取事件时间生成Watermark
-        SingleOutputStreamOperator<JSONObject> jsonObjWithWmDS = filterDS.assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2)).withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
+        SingleOutputStreamOperator<JSONObject> jsonObjWithWmDS = filterDS.assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2))
+                .withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
             @Override
             public long extractTimestamp(JSONObject element, long recordTimestamp) {
                 return DateFormatUtil.toTs(element.getString("create_time"), true);
@@ -168,6 +169,7 @@ public class DwsTradeOrderWindow {
                         null);
             }
         });
+
 
         //TODO 9.开窗、聚合
         SingleOutputStreamOperator<TradeOrderBean> resultDS = tradeOrderDS.windowAll(TumblingEventTimeWindows.of(org.apache.flink.streaming.api.windowing.time.Time.seconds(10)))

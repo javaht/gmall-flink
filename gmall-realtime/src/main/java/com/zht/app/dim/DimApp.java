@@ -5,9 +5,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.ververica.cdc.connectors.mysql.source.MySqlSource;
 import com.ververica.cdc.connectors.mysql.table.StartupOptions;
 import com.ververica.cdc.debezium.JsonDebeziumDeserializationSchema;
+import com.zht.app.func.DimSinkFunction;
 import com.zht.app.func.TableProcessFunction;
 import com.zht.bean.TableProcess;
-import com.zht.utils.DimSinkFunction;
 import com.zht.utils.MyKafkaUtil;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -30,6 +30,7 @@ public class DimApp {
         env.setParallelism(1); //生产环境中设置为Kafka主题的分区数
 
         //1.1 开启CheckPoint
+
         //env.enableCheckpointing(5 * 60000L, CheckpointingMode.EXACTLY_ONCE);
         //env.getCheckpointConfig().setCheckpointTimeout(10 * 60000L);
         //env.getCheckpointConfig().setMaxConcurrentCheckpoints(2);

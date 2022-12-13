@@ -97,7 +97,6 @@ public class DwdInteractionComment {
                 ")" + MyKafkaUtil.getKafkaSinkDDL("dwd_interaction_comment"));
 
         // TODO 8. 将关联结果写入 Kafka-Connector 表
-        tableEnv.executeSql("" +
-                "insert into dwd_interaction_comment select * from result_table");
+        tableEnv.executeSql("insert into dwd_interaction_comment select * from result_table");
     }
 }

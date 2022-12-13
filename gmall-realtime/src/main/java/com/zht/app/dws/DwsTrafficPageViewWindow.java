@@ -55,7 +55,7 @@ public class DwsTrafficPageViewWindow {
 
         //TODO 2.读取 Kafka 页面日志主题数据创建流
         String topic = "dwd_traffic_page_log";
-        String groupId = "dws_traffic_page_view_window_211126";
+        String groupId = "dws_traffic_page_view_window";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.将每行数据转换为JSON对象并过滤(首页与商品详情页)

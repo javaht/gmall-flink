@@ -45,15 +45,12 @@ public class MyKafkaUtil {
                     public TypeInformation<String> getProducedType() {
                         return BasicTypeInfo.STRING_TYPE_INFO;
                     }
-                },
-                properties);
+                }, properties);
     }
 
 
     public static FlinkKafkaProducer<String> getFlinkKafkaProducer(String topic) {
-        return new FlinkKafkaProducer<String>(KAFKA_SERVER,
-                topic,
-                new SimpleStringSchema());
+        return new FlinkKafkaProducer<String>(KAFKA_SERVER, topic, new SimpleStringSchema());
     }
 
     public static FlinkKafkaProducer<String> getFlinkKafkaProducer(String topic, String defaultTopic) {

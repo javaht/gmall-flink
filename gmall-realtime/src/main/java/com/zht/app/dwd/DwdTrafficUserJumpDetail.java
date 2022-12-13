@@ -46,7 +46,7 @@ public class DwdTrafficUserJumpDetail {
 
         //TODO 2.读取Kafka 页面日志主题数据创建流
         String topic = "dwd_traffic_page_log";
-        String groupId = "user_jump_detail_1126";
+        String groupId = "user_jump_detail";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.将每行数据转换为JSON对象
@@ -54,7 +54,7 @@ public class DwdTrafficUserJumpDetail {
 
         //TODO 4.提取事件时间&按照Mid分组
         KeyedStream<JSONObject, String> keyedStream = jsonObjDS
-                .assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2))
+ .assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2))
                         .withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
                             @Override
                             public long extractTimestamp(JSONObject element, long recordTimestamp) {

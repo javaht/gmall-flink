@@ -1,6 +1,7 @@
 package com.zht.app.dwd;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONAware;
 import com.alibaba.fastjson.JSONObject;
 import com.zht.utils.DateFormatUtil;
@@ -75,11 +76,8 @@ public class DwdTrafficUniqueVisitorDetail {
                 ValueStateDescriptor<String> stateDescriptor = new ValueStateDescriptor<>("last-visit", String.class);
 
                 //设置状态的TTL
-                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.days(1))
-                        .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
-                        .build();
+                StateTtlConfig ttlConfig = new StateTtlConfig.Builder(Time.days(1)).setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite).build();
                 stateDescriptor.enableTimeToLive(ttlConfig);
-
                 lastVisitState = getRuntimeContext().getState(stateDescriptor);
             }
 
@@ -102,8 +100,7 @@ public class DwdTrafficUniqueVisitorDetail {
         //TODO 6.将数据写到Kafka
         String targetTopic = "dwd_traffic_unique_visitor_detail";
         uvDS.print(">>>>>>>>");
-        uvDS.map(JSONAware::toJSONString)
-                .addSink(MyKafkaUtil.getFlinkKafkaProducer(targetTopic));
+        uvDS.map(JSONArray::toJSONString).addSink(MyKafkaUtil.getFlinkKafkaProducer(targetTopic));
 
         //TODO 7.启动任务
         env.execute("DwdTrafficUniqueVisitorDetail");

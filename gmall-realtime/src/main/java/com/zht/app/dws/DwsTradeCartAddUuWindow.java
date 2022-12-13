@@ -54,14 +54,16 @@ public class DwsTradeCartAddUuWindow {
 
         //TODO 2.读取 Kafka DWD层 加购事实表
         String topic = "dwd_trade_cart_add";
-        String groupId = "dws_trade_cart_add_uu_window_211126";
+        String groupId = "dws_trade_cart_add_uu_window";
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.将数据转换为JSON对象
         SingleOutputStreamOperator<JSONObject> jsonObjDS = kafkaDS.map(JSON::parseObject);
 
         //TODO 4.提取事件时间生成Watermark
-        SingleOutputStreamOperator<JSONObject> jsonObjWithWmDS = jsonObjDS.assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2)).withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
+        SingleOutputStreamOperator<JSONObject> jsonObjWithWmDS = jsonObjDS
+                .assignTimestampsAndWatermarks(WatermarkStrategy.<JSONObject>forBoundedOutOfOrderness(Duration.ofSeconds(2))
+                        .withTimestampAssigner(new SerializableTimestampAssigner<JSONObject>() {
             @Override
             public long extractTimestamp(JSONObject element, long recordTimestamp) {
 

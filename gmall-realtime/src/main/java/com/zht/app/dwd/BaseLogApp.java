@@ -5,6 +5,9 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.zht.utils.DateFormatUtil;
 import com.zht.utils.MyKafkaUtil;
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
@@ -45,9 +48,10 @@ public class BaseLogApp {
         DataStreamSource<String> kafkaDS = env.addSource(MyKafkaUtil.getFlinkKafkaConsumer(topic, groupId));
 
         //TODO 3.过滤掉非JSON格式的数据&将每行数据转换为JSON对象
-        OutputTag<String> dirtyTag = new OutputTag<String>("Dirty") {
-        };
+        OutputTag<String> dirtyTag = new OutputTag<String>("Dirty") {};
+
         SingleOutputStreamOperator<JSONObject> jsonObjDS = kafkaDS.process(new ProcessFunction<String, JSONObject>() {
+
             @Override
             public void processElement(String value, Context ctx, Collector<JSONObject> out) throws Exception {
 
@@ -59,6 +63,8 @@ public class BaseLogApp {
                 }
             }
         });
+
+
         //获取侧输出流脏数据并打印
         DataStream<String> dirtyDS = jsonObjDS.getSideOutput(dirtyTag);
         dirtyDS.print("Dirty>>>>>>>>>>>>");

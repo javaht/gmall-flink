@@ -60,7 +60,7 @@ public class DwdTradeCartAdd {
 
         //将加购表转换为流并打印测试
         tableEnv.createTemporaryView("cart_info_table", cartAddTable);
-        //tableEnv.toAppendStream(cartAddTable, Row.class).print(">>>>>>");
+        //tableEnv.totream(cartAddTable, Row.class).print(">>>>>>");
 
         //TODO 4.读取MySQL的 base_dic 表作为LookUp表
         tableEnv.executeSql(MysqlUtil.getBaseDicLookUpDDL());

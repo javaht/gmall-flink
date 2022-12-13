@@ -18,6 +18,7 @@ import org.apache.flink.api.common.state.BroadcastState;
 
 public class  TableProcessFunction extends BroadcastProcessFunction<JSONObject, String, JSONObject> {
     private MapStateDescriptor<String, TableProcess> stateDescriptor;
+
     private Connection connection;
     public TableProcessFunction(MapStateDescriptor stateDescriptor) {
         this.stateDescriptor = stateDescriptor;
@@ -28,7 +29,7 @@ public class  TableProcessFunction extends BroadcastProcessFunction<JSONObject, 
     }
 
     @Override
-    public void processElement(JSONObject value, BroadcastProcessFunction<JSONObject, String, JSONObject>.ReadOnlyContext ctx, Collector<JSONObject> out) throws Exception {
+    public void processElement(JSONObject value, ReadOnlyContext ctx, Collector<JSONObject> out) throws Exception {
         //获取广播的配置数
         ReadOnlyBroadcastState<String, TableProcess> broadcastState = ctx.getBroadcastState(stateDescriptor);
         TableProcess tableProcess = broadcastState.get(value.getString("table"));
